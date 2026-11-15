@@ -2,11 +2,12 @@
 
 ## Encrypted vault branch verification
 
-- Rust vault tests: 8 passing. Cover setup/read/lock, wrong passphrase, ciphertext tampering, invalid ledger schema, explicit migration with retained plaintext snapshots, explicit recovery with damaged-current preservation, and exclusive process ownership.
-- Native: `cargo fmt --check`, `cargo test`, and `cargo check` pass on Apple Silicon macOS. The Objective-C Security/LocalAuthentication bridge compiles and links into the test binary.
-- Frontend: `npm test` passes (10 tests, including save-before-lock and locked-view cleanup after status refresh failure); `npm run build` passes.
+- Rust vault tests: 9 passing after provider isolation. Cover setup/read/lock, wrong passphrase, ciphertext tampering, invalid ledger schema, explicit migration with retained plaintext snapshots, explicit recovery with damaged-current preservation, cleanup-failure state, and exclusive process ownership.
+- Native: `cargo fmt --check`, `cargo test`, strict Clippy, and `npm run tauri -- build --debug --no-bundle --ci` pass on Apple Silicon macOS. Tests compile with native provider calls disabled.
+- Frontend: `npm test` passes (11 tests, including save-before-lock and locked-view cleanup after status refresh failure); `npm run build` passes.
 - Vault behavior: native active storage is AES-256-GCM encrypted under a random key wrapped by Argon2id. Browser preview still uses plaintext localStorage, with that limit called out in Settings.
-- Not verified: no live user Keychain item was added or removed, no Touch ID prompt was invoked, and no signed/notarized macOS build was tested. Data Protection Keychain requires an appropriate signed app identity/entitlements; x86_64 cross-build and Windows vault runtime/build remain unverified here. Physical biometric behavior needs a user test.
+- **Test isolation incident:** an earlier macOS recovery test called the production Keychain delete entry point before this was caught. Its result was ignored by the recovery flow, and we did not inspect Keychain afterward; whether a matching GeldApp item existed or was removed is unknown. The test provider is now disabled under `cfg(test)`, and recovery cleanup has an injected test seam. No further native Keychain calls are planned in tests. Data Protection Keychain requires an appropriate signed app identity/entitlements; x86_64 cross-build and Windows vault runtime/build remain unverified here. Physical biometric behavior needs a user test.
+- Not verified: no Keychain item was added by the tests, no Touch ID prompt was invoked, and no signed/notarized macOS build was tested. The earlier deletion attempt's effect is unknown. Do not rely on the Keychain item surviving; if Touch ID unlock was previously enabled for this app, use passphrase recovery and re-enable it only after reviewing this incident. Avoid checking/removing items manually until the owner decides whether to inspect the fixed GeldApp service/account entry.
 - Browser UI inspection could not run in this environment: the CUA browser host was unavailable and the default Vite port was already occupied.
 
 The earlier bullets below record the prototype's pre-vault checks from this date. Its plaintext-ledger observation describes that baseline, not this branch's current native storage.

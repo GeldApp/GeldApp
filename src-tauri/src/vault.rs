@@ -191,6 +191,15 @@ impl VaultSession {
     }
 
     pub fn recover_previous(&self, directory: &Path, passphrase: &str) -> Result<(), String> {
+        self.recover_previous_with_cleanup(directory, passphrase, platform_delete_biometric_key)
+    }
+
+    fn recover_previous_with_cleanup(
+        &self,
+        directory: &Path,
+        passphrase: &str,
+        delete_biometric_key: impl FnOnce() -> Result<(), String>,
+    ) -> Result<(), String> {
         let _operation = self
             .operation
             .lock()
@@ -209,10 +218,7 @@ impl VaultSession {
         validate_data(
             std::str::from_utf8(&data).map_err(|_| "Previous vault data is invalid".to_string())?,
         )?;
-        #[cfg(target_os = "macos")]
-        let biometric_cleanup_needed = platform_delete_biometric_key().is_err();
-        #[cfg(not(target_os = "macos"))]
-        let biometric_cleanup_needed = false;
+        let biometric_cleanup_needed = delete_biometric_key().is_err();
         // If Keychain refused removal, keep the recovery screen's opt-out visible
         // so the user can retry cleanup from Settings after unlocking by passphrase.
         envelope.biometric_enabled = biometric_cleanup_needed;
@@ -690,7 +696,7 @@ fn legacy_files(directory: &Path) -> Vec<String> {
         .collect()
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 mod keychain {
     use super::Zeroizing;
     unsafe extern "C" {
@@ -731,35 +737,35 @@ mod keychain {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn platform_biometry_available() -> bool {
     keychain::available()
 }
-#[cfg(not(target_os = "macos"))]
+#[cfg(any(not(target_os = "macos"), test))]
 fn platform_biometry_available() -> bool {
     false
 }
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn platform_store_biometric_key(key: &[u8; 32]) -> Result<(), String> {
     keychain::store(key)
 }
-#[cfg(not(target_os = "macos"))]
+#[cfg(any(not(target_os = "macos"), test))]
 fn platform_store_biometric_key(_: &[u8; 32]) -> Result<(), String> {
     Err("Biometric unlocking is supported only in the macOS app.".into())
 }
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn platform_load_biometric_key() -> Result<Zeroizing<[u8; 32]>, String> {
     keychain::load()
 }
-#[cfg(not(target_os = "macos"))]
+#[cfg(any(not(target_os = "macos"), test))]
 fn platform_load_biometric_key() -> Result<Zeroizing<[u8; 32]>, String> {
     Err("Biometric unlocking is supported only in the macOS app.".into())
 }
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 fn platform_delete_biometric_key() -> Result<(), String> {
     keychain::delete()
 }
-#[cfg(not(target_os = "macos"))]
+#[cfg(any(not(target_os = "macos"), test))]
 fn platform_delete_biometric_key() -> Result<(), String> {
     Err("Biometric unlocking is supported only in the macOS app.".into())
 }
@@ -880,13 +886,41 @@ mod tests {
             fs::read(vault_path(directory.path())).unwrap(),
             b"damaged current file"
         );
-        session.recover_previous(directory.path(), PASS).unwrap();
+        session
+            .recover_previous_with_cleanup(directory.path(), PASS, || Ok(()))
+            .unwrap();
         assert_eq!(session.load(directory.path()).unwrap().unwrap(), LEDGER);
+        assert!(!session.status(directory.path()).unwrap().biometric_enabled);
         assert!(fs::read_dir(directory.path()).unwrap().any(|entry| entry
             .unwrap()
             .file_name()
             .to_string_lossy()
             .starts_with("vault.rejected-")));
         assert!(previous_path(directory.path()).is_file());
+    }
+
+    #[test]
+    fn recovery_keeps_biometric_cleanup_retry_visible_when_provider_fails() {
+        let directory = tempfile::tempdir().unwrap();
+        let session = VaultSession::new();
+        session.setup(directory.path(), PASS, LEDGER).unwrap();
+        let mut envelope: VaultFile =
+            serde_json::from_slice(&fs::read(vault_path(directory.path())).unwrap()).unwrap();
+        envelope.biometric_enabled = true;
+        fs::write(
+            vault_path(directory.path()),
+            serde_json::to_vec(&envelope).unwrap(),
+        )
+        .unwrap();
+        session.save(directory.path(), LEDGER).unwrap();
+        session.lock().unwrap();
+
+        session
+            .recover_previous_with_cleanup(directory.path(), PASS, || {
+                Err("mock Keychain cleanup failure".into())
+            })
+            .unwrap();
+
+        assert!(session.status(directory.path()).unwrap().biometric_enabled);
     }
 }
