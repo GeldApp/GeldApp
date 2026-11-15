@@ -209,7 +209,13 @@ impl VaultSession {
         validate_data(
             std::str::from_utf8(&data).map_err(|_| "Previous vault data is invalid".to_string())?,
         )?;
-        envelope.biometric_enabled = false;
+        #[cfg(target_os = "macos")]
+        let biometric_cleanup_needed = platform_delete_biometric_key().is_err();
+        #[cfg(not(target_os = "macos"))]
+        let biometric_cleanup_needed = false;
+        // If Keychain refused removal, keep the recovery screen's opt-out visible
+        // so the user can retry cleanup from Settings after unlocking by passphrase.
+        envelope.biometric_enabled = biometric_cleanup_needed;
         let current = vault_path(directory);
         let rejected = directory.join(format!("vault.rejected-{}.enc", rand::random::<u64>()));
         let recovery_next = directory.join("vault.recovery.next.enc");
@@ -229,7 +235,6 @@ impl VaultSession {
         if let Ok(dir) = File::open(directory) {
             let _ = dir.sync_all();
         }
-        let _ = platform_delete_biometric_key();
         *self
             .key
             .lock()

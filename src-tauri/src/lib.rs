@@ -138,8 +138,7 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let directory = app.path().app_data_dir()?;
-            let session = VaultSession::open(&directory)
-                .map_err(|error| std::io::Error::new(std::io::ErrorKind::Other, error))?;
+            let session = VaultSession::open(&directory).map_err(std::io::Error::other)?;
             app.manage(VaultState(Arc::new(session)));
             Ok(())
         })
