@@ -48,7 +48,7 @@
       "parameters": {
         "name": "Conventional Commit message",
         "operator": "regex",
-        "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([A-Za-z0-9_.-]+\\))?(!)?: .+"
+        "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([^()\\r\\n]+\\))?(!)?: .+"
       }
     },
     {
