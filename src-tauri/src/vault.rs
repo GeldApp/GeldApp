@@ -4,16 +4,18 @@ use aes_gcm::{
 };
 use argon2::{Algorithm, Argon2, Params, Version};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use fs2::FileExt;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::{
+    collections::HashSet,
     fs,
+    fs::File,
     io::Write,
     path::{Path, PathBuf},
     sync::Mutex,
 };
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
 const MAX_LEDGER: usize = 30_000_000;
 const KDF_MEMORY_KIB: u32 = 65_536;
@@ -47,19 +49,45 @@ pub struct Status {
     pub biometric_enabled: bool,
     pub biometric_available: bool,
     pub biometric_supported: bool,
+    pub previous_vault_exists: bool,
 }
 
 pub struct VaultSession {
     operation: Mutex<()>,
     key: Mutex<Option<Zeroizing<[u8; 32]>>>,
+    _process_lock: Option<File>,
 }
 
 impl VaultSession {
+    #[cfg(test)]
     pub fn new() -> Self {
         Self {
             operation: Mutex::new(()),
             key: Mutex::new(None),
+            _process_lock: None,
         }
+    }
+
+    pub fn open(directory: &Path) -> Result<Self, String> {
+        fs::create_dir_all(directory)
+            .map_err(|_| "Could not prepare GeldApp storage".to_string())?;
+        let lock_path = directory.join(".vault.lock");
+        let mut options = fs::OpenOptions::new();
+        options.read(true).write(true).create(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let file = options
+            .open(lock_path)
+            .map_err(|_| "Could not open the vault session lock".to_string())?;
+        file.try_lock_exclusive().map_err(|_| "Another GeldApp process already owns this vault. Close it before opening this workspace.".to_string())?;
+        Ok(Self {
+            operation: Mutex::new(()),
+            key: Mutex::new(None),
+            _process_lock: Some(file),
+        })
     }
 
     pub fn status(&self, directory: &Path) -> Result<Status, String> {
@@ -80,6 +108,7 @@ impl VaultSession {
             biometric_enabled: envelope.as_ref().is_some_and(|v| v.biometric_enabled),
             biometric_available: platform_biometry_available(),
             biometric_supported,
+            previous_vault_exists: previous_path(directory).is_file(),
         })
     }
 
@@ -110,9 +139,9 @@ impl VaultSession {
         if !allowed.contains(&source) {
             return Err("Choose a listed legacy ledger file.".into());
         }
-        let data = fs::read_to_string(directory.join(source)).map_err(|_| {
+        let data = Zeroizing::new(fs::read_to_string(directory.join(source)).map_err(|_| {
             "Could not read the selected legacy ledger. It was left unchanged.".to_string()
-        })?;
+        })?);
         validate_data(&data)?;
         self.setup(directory, passphrase, &data)
     }
@@ -154,6 +183,53 @@ impl VaultSession {
         validate_data(
             std::str::from_utf8(&data).map_err(|_| "Vault data is invalid".to_string())?,
         )?;
+        *self
+            .key
+            .lock()
+            .map_err(|_| "Vault session is unavailable".to_string())? = Some(key);
+        Ok(())
+    }
+
+    pub fn recover_previous(&self, directory: &Path, passphrase: &str) -> Result<(), String> {
+        let _operation = self
+            .operation
+            .lock()
+            .map_err(|_| "Vault is busy".to_string())?;
+        let previous = previous_path(directory);
+        let raw = fs::read_to_string(&previous)
+            .map_err(|_| "No readable previous encrypted vault exists.".to_string())?;
+        let mut envelope: VaultFile = serde_json::from_str(&raw).map_err(|_| {
+            "Previous encrypted vault is invalid and was left unchanged.".to_string()
+        })?;
+        let key = unwrap_key(passphrase, &envelope)
+            .map_err(|_| "Could not unlock previous vault. Check your passphrase.".to_string())?;
+        let data = decrypt_data(&key, &envelope).map_err(|_| {
+            "Previous vault authentication failed. Existing files were left unchanged.".to_string()
+        })?;
+        validate_data(
+            std::str::from_utf8(&data).map_err(|_| "Previous vault data is invalid".to_string())?,
+        )?;
+        envelope.biometric_enabled = false;
+        let current = vault_path(directory);
+        let rejected = directory.join(format!("vault.rejected-{}.enc", rand::random::<u64>()));
+        let recovery_next = directory.join("vault.recovery.next.enc");
+        write_exact_atomic_stage(
+            &recovery_next,
+            &serde_json::to_vec(&envelope)
+                .map_err(|_| "Could not encode previous vault".to_string())?,
+        )?;
+        if current.exists() {
+            fs::rename(&current, &rejected)
+                .map_err(|_| "Could not preserve the current vault before recovery.".to_string())?;
+        }
+        fs::rename(&recovery_next, &current).map_err(|_| {
+            "Could not restore previous vault. The previous encrypted file remains available."
+                .to_string()
+        })?;
+        if let Ok(dir) = File::open(directory) {
+            let _ = dir.sync_all();
+        }
+        let _ = platform_delete_biometric_key();
         *self
             .key
             .lock()
@@ -248,9 +324,149 @@ fn validate_data(data: &str) -> Result<(), String> {
     if data.len() > MAX_LEDGER {
         return Err("Ledger exceeds 30 MB".into());
     }
-    serde_json::from_str::<Value>(data)
-        .map(|_| ())
-        .map_err(|_| "Ledger data is not valid JSON".into())
+    let ledger = Zeroizing::new(
+        serde_json::from_str::<LedgerData>(data)
+            .map_err(|_| "Ledger is not a valid GeldApp ledger".to_string())?,
+    );
+    if ledger.version != 1 {
+        return Err("Unsupported ledger version".into());
+    }
+    let mut account_ids = HashSet::new();
+    for account in &ledger.accounts {
+        if !account_ids.insert(&account.id)
+            || !["Current account", "Savings", "Cash"].contains(&account.kind.as_str())
+            || !safe_integer(account.balance)
+        {
+            return Err("Invalid account data".into());
+        }
+    }
+    let mut transaction_ids = HashSet::new();
+    for transaction in &ledger.transactions {
+        if !transaction_ids.insert(&transaction.id)
+            || !account_ids.contains(&transaction.account_id)
+            || !valid_category(&transaction.category)
+            || !valid_date(&transaction.date)
+            || !safe_integer(transaction.amount)
+        {
+            return Err("Invalid transaction data".into());
+        }
+    }
+    for budget in &ledger.budgets {
+        if !valid_category(&budget.category) || !safe_integer(budget.limit) || budget.limit <= 0 {
+            return Err("Invalid budget data".into());
+        }
+    }
+    for draft in &ledger.drafts {
+        if !account_ids.contains(&draft.account_id)
+            || !safe_integer(draft.amount)
+            || draft.amount <= 0
+        {
+            return Err("Invalid payment draft".into());
+        }
+    }
+    Ok(())
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Zeroize)]
+#[serde(rename_all = "camelCase")]
+struct LedgerData {
+    version: u8,
+    accounts: Vec<AccountData>,
+    transactions: Vec<TransactionData>,
+    budgets: Vec<BudgetData>,
+    drafts: Vec<DraftData>,
+}
+#[allow(dead_code)]
+#[derive(Deserialize, Zeroize)]
+#[serde(rename_all = "camelCase")]
+struct AccountData {
+    id: String,
+    name: String,
+    bank: String,
+    iban: String,
+    balance: i64,
+    color: String,
+    kind: String,
+}
+#[allow(dead_code)]
+#[derive(Deserialize, Zeroize)]
+#[serde(rename_all = "camelCase")]
+struct TransactionData {
+    id: String,
+    account_id: String,
+    merchant: String,
+    note: String,
+    date: String,
+    amount: i64,
+    category: String,
+}
+#[allow(dead_code)]
+#[derive(Deserialize, Zeroize)]
+#[serde(rename_all = "camelCase")]
+struct BudgetData {
+    id: String,
+    category: String,
+    limit: i64,
+}
+#[allow(dead_code)]
+#[derive(Deserialize, Zeroize)]
+#[serde(rename_all = "camelCase")]
+struct DraftData {
+    id: String,
+    account_id: String,
+    recipient: String,
+    iban: String,
+    amount: i64,
+    reference: String,
+}
+
+fn safe_integer(value: i64) -> bool {
+    value.unsigned_abs() <= 9_007_199_254_740_991
+}
+
+fn valid_category(value: &str) -> bool {
+    [
+        "Groceries",
+        "Food & drink",
+        "Shopping",
+        "Transport",
+        "Home",
+        "Subscriptions",
+        "Health",
+        "Income",
+        "Transfers",
+        "Other",
+    ]
+    .contains(&value)
+}
+
+fn valid_date(value: &str) -> bool {
+    let Some((year, rest)) = value.split_once('-') else {
+        return false;
+    };
+    let Some((month, day)) = rest.split_once('-') else {
+        return false;
+    };
+    if year.len() != 4 || month.len() != 2 || day.len() != 2 || value.len() != 10 {
+        return false;
+    }
+    let (Ok(year), Ok(month), Ok(day)) = (
+        year.parse::<u32>(),
+        month.parse::<u32>(),
+        day.parse::<u32>(),
+    ) else {
+        return false;
+    };
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return false,
+    };
+    day >= 1 && day <= days
 }
 
 fn random_key() -> Zeroizing<[u8; 32]> {
@@ -391,20 +607,31 @@ fn vault_exists(directory: &Path) -> bool {
 }
 
 fn read_vault(directory: &Path) -> Result<VaultFile, String> {
-    for path in [vault_path(directory), previous_path(directory)] {
-        match fs::read_to_string(path) {
-            Ok(raw) => {
-                return serde_json::from_str(&raw).map_err(|_| {
-                    "Vault file is invalid. Existing files were left unchanged.".into()
-                })
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(_) => {
-                return Err("Could not read vault file. Existing files were left unchanged.".into())
-            }
+    let raw = fs::read_to_string(vault_path(directory)).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound && previous_path(directory).is_file() {
+            "The current vault is missing. Choose explicit recovery from the previous encrypted snapshot.".to_string()
+        } else {
+            "Could not read the current vault. Existing files were left unchanged.".to_string()
         }
+    })?;
+    serde_json::from_str(&raw)
+        .map_err(|_| "Current vault file is invalid. Existing files were left unchanged.".into())
+}
+
+fn write_exact_atomic_stage(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
     }
-    Err("No encrypted vault exists.".into())
+    let mut file = options
+        .open(path)
+        .map_err(|_| "Could not stage previous vault recovery".to_string())?;
+    file.write_all(bytes)
+        .and_then(|_| file.sync_all())
+        .map_err(|_| "Could not stage previous vault recovery".to_string())
 }
 
 fn write_vault(directory: &Path, envelope: &VaultFile) -> Result<(), String> {
@@ -434,6 +661,10 @@ fn write_vault(directory: &Path, envelope: &VaultFile) -> Result<(), String> {
         .map_err(|_| "Could not save encrypted vault".to_string())?;
     drop(file);
     if current.exists() {
+        if previous.exists() {
+            fs::remove_file(&previous)
+                .map_err(|_| "Could not rotate encrypted vault snapshots".to_string())?;
+        }
         fs::rename(&current, &previous)
             .map_err(|_| "Could not preserve previous encrypted vault".to_string())?;
     }
@@ -533,7 +764,8 @@ mod tests {
     use super::*;
 
     const PASS: &str = "correct horse battery staple";
-    const LEDGER: &str = r#"{"accounts":[],"transactions":[],"budgets":[],"drafts":[]}"#;
+    const LEDGER: &str =
+        r#"{"version":1,"accounts":[],"transactions":[],"budgets":[],"drafts":[]}"#;
 
     #[test]
     fn setup_encrypts_and_unlocks_and_lock_clears_session() {
@@ -595,5 +827,61 @@ mod tests {
         let session = VaultSession::new();
         assert!(session.setup(directory.path(), PASS, "not-json").is_err());
         assert!(!vault_exists(directory.path()));
+    }
+
+    #[test]
+    fn valid_json_with_wrong_schema_is_rejected_without_migration_or_cleanup() {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(directory.path().join("ledger.json"), "{}").unwrap();
+        fs::write(directory.path().join("ledger.previous.json"), LEDGER).unwrap();
+        let session = VaultSession::new();
+        assert!(session
+            .migrate(directory.path(), PASS, "ledger.json")
+            .is_err());
+        assert!(!vault_exists(directory.path()));
+        assert_eq!(legacy_files(directory.path()).len(), 2);
+    }
+
+    #[test]
+    fn ledger_references_and_dates_are_validated_before_encryption() {
+        let invalid = r#"{"version":1,"accounts":[],"transactions":[{"id":"t1","accountId":"missing","merchant":"Coffee","note":"","date":"2026-02-30","amount":-450,"category":"Food & drink"}],"budgets":[],"drafts":[]}"#;
+        assert!(validate_data(invalid).is_err());
+        assert!(!valid_date("2026-02-30"));
+        assert!(valid_date("2024-02-29"));
+    }
+
+    #[test]
+    fn a_second_session_cannot_own_the_same_directory() {
+        let directory = tempfile::tempdir().unwrap();
+        let first = VaultSession::open(directory.path()).unwrap();
+        assert!(VaultSession::open(directory.path()).is_err());
+        drop(first);
+        assert!(VaultSession::open(directory.path()).is_ok());
+    }
+
+    #[test]
+    fn previous_snapshot_recovery_authenticates_and_preserves_rejected_copy() {
+        let directory = tempfile::tempdir().unwrap();
+        let session = VaultSession::new();
+        session.setup(directory.path(), PASS, LEDGER).unwrap();
+        let newer = r#"{"version":1,"accounts":[],"transactions":[],"budgets":[{"id":"b1","category":"Groceries","limit":100}],"drafts":[]}"#;
+        session.save(directory.path(), newer).unwrap();
+        session.lock().unwrap();
+        fs::write(vault_path(directory.path()), b"damaged current file").unwrap();
+        assert!(session
+            .recover_previous(directory.path(), "wrong passphrase")
+            .is_err());
+        assert_eq!(
+            fs::read(vault_path(directory.path())).unwrap(),
+            b"damaged current file"
+        );
+        session.recover_previous(directory.path(), PASS).unwrap();
+        assert_eq!(session.load(directory.path()).unwrap().unwrap(), LEDGER);
+        assert!(fs::read_dir(directory.path()).unwrap().any(|entry| entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with("vault.rejected-")));
+        assert!(previous_path(directory.path()).is_file());
     }
 }
