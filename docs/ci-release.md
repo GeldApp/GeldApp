@@ -81,9 +81,11 @@ to calculate the next version from commits after the latest `v*` tag:
 - `type(scope)!:` or a `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer raises the
   major version. At `0.x`, a breaking change produces `1.0.0`.
 - Other commit types, including `fix`, `docs`, and `chore`, use the action's
-  default patch increment. Each non-feature, non-breaking main commit after a
-  tag advances the patch. This keeps a draft version available for every main
-  commit.
+  default patch increment. With `bump_each_commit: false`, the action chooses
+  one next version from all commits since the latest tag; ordinary commits
+  share that implied patch version until a tag is published. A later feature
+  or breaking commit can raise the draft's implied version for the whole
+  unreleased range. The workflow still updates the draft on every main push.
 
 The workflow passes that version to the standard
 [`release-drafter` action](https://github.com/release-drafter/release-drafter),
@@ -95,3 +97,20 @@ version.
 
 The release workflow only runs on pushes to `main`. Branch and draft pull
 request commits do not create draft releases.
+
+## Main branch ruleset
+
+`.github/rulesets/main.json` is the REST request body for the intended active
+`main` ruleset. It requires pull requests, squash only, strict passing checks,
+Conventional Commit subjects, no force pushes or branch deletion, and CodeQL
+results with a High-or-higher security alert threshold. It grants no bypass
+actors. The ruleset API requires repository Administration write access. GitHub
+currently blocks this private repository's ruleset API on its plan (403), and
+CodeQL result enforcement also requires Code Security entitlement. Apply the
+payload only after those plan features are available.
+
+The required status contexts in the JSON match job names declared by the
+workflows. Verify GitHub's actual check-run context names after the workflows
+have completed once, then adjust those values if the UI displays a workflow
+prefix. The repository's squash-only merge setting is already enabled; the
+ruleset repeats that constraint for branch protection.

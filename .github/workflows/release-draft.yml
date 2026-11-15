@@ -28,7 +28,7 @@ jobs:
 
       - name: Calculate next version from Conventional Commits
         id: version
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@a8f8f59fd7f0625188492e945240f12d7ad2dca3 # v5.4.0
         with:
           tag_prefix: v
           major_pattern: '/^[a-z]+(?:\([^)]+\))?!:|(?:^|\n)BREAKING[- ]CHANGE:/'
@@ -38,7 +38,7 @@ jobs:
           enable_prerelease_mode: false
 
       - name: Create or update draft release
-        uses: release-drafter/release-drafter@v7.10.0
+        uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
         with:
           version: ${{ steps.version.outputs.version }}
           commitish: main
