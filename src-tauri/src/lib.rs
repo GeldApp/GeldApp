@@ -1,65 +1,114 @@
-use std::{fs, io::Write, sync::Mutex};
 use tauri::Manager;
+use zeroize::Zeroize;
 
-struct LedgerLock(Mutex<()>);
+mod vault;
+use vault::VaultSession;
+
+fn data_directory(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|_| "Could not locate GeldApp storage".to_string())
+}
+
+#[tauri::command]
+fn vault_status(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, VaultSession>,
+) -> Result<vault::Status, String> {
+    state.status(&data_directory(&app)?)
+}
+
+#[tauri::command]
+fn setup_vault(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, VaultSession>,
+    mut passphrase: String,
+    data: String,
+) -> Result<(), String> {
+    let result =
+        data_directory(&app).and_then(|directory| state.setup(&directory, &passphrase, &data));
+    passphrase.zeroize();
+    result
+}
+
+#[tauri::command]
+fn migrate_legacy_vault(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, VaultSession>,
+    mut passphrase: String,
+    source: String,
+) -> Result<(), String> {
+    let result =
+        data_directory(&app).and_then(|directory| state.migrate(&directory, &passphrase, &source));
+    passphrase.zeroize();
+    result
+}
+
+#[tauri::command]
+fn unlock_vault(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, VaultSession>,
+    mut passphrase: String,
+) -> Result<(), String> {
+    let result = data_directory(&app).and_then(|directory| state.unlock(&directory, &passphrase));
+    passphrase.zeroize();
+    result
+}
+
+#[tauri::command]
+fn unlock_biometric(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, VaultSession>,
+) -> Result<(), String> {
+    state.unlock_biometric(&data_directory(&app)?)
+}
+
+#[tauri::command]
+fn lock_vault(state: tauri::State<'_, VaultSession>) -> Result<(), String> {
+    state.lock()
+}
 
 #[tauri::command]
 fn load_ledger(
     app: tauri::AppHandle,
-    state: tauri::State<LedgerLock>,
+    state: tauri::State<'_, VaultSession>,
 ) -> Result<Option<String>, String> {
-    let _guard = state.0.lock().map_err(|e| e.to_string())?;
-    let path = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("ledger.json");
-    match fs::read_to_string(path) {
-        Ok(data) => Ok(Some(data)),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(e.to_string()),
-    }
+    state.load(&data_directory(&app)?)
 }
 
 #[tauri::command]
 fn save_ledger(
     app: tauri::AppHandle,
-    state: tauri::State<LedgerLock>,
+    state: tauri::State<'_, VaultSession>,
     data: String,
 ) -> Result<(), String> {
-    let _guard = state.0.lock().map_err(|e| e.to_string())?;
-    if data.len() > 30_000_000 {
-        return Err("Ledger exceeds 30 MB".into());
-    }
-    serde_json::from_str::<serde_json::Value>(&data).map_err(|e| e.to_string())?;
-    let directory = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-    let path = directory.join("ledger.json");
-    let temporary = directory.join("ledger.next.json");
-    let mut options = fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut file = options.open(&temporary).map_err(|e| e.to_string())?;
-    file.write_all(data.as_bytes()).map_err(|e| e.to_string())?;
-    file.sync_all().map_err(|e| e.to_string())?;
-    drop(file);
-    // Preserve the last successful snapshot if replacement is interrupted.
-    if path.exists() {
-        fs::copy(&path, directory.join("ledger.previous.json")).map_err(|e| e.to_string())?;
-    }
-    fs::rename(&temporary, &path).map_err(|e| e.to_string())?;
-    Ok(())
+    state.save(&data_directory(&app)?, &data)
+}
+
+#[tauri::command]
+fn set_vault_biometric(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, VaultSession>,
+    enabled: bool,
+) -> Result<(), String> {
+    state.set_biometric(&data_directory(&app)?, enabled)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .manage(LedgerLock(Mutex::new(())))
-        .invoke_handler(tauri::generate_handler![load_ledger, save_ledger])
+        .manage(VaultSession::new())
+        .invoke_handler(tauri::generate_handler![
+            vault_status,
+            setup_vault,
+            migrate_legacy_vault,
+            unlock_vault,
+            unlock_biometric,
+            lock_vault,
+            load_ledger,
+            save_ledger,
+            set_vault_biometric,
+        ])
         .run(tauri::generate_context!())
         .expect("Could not start GeldApp");
 }
