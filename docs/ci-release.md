@@ -69,7 +69,7 @@ to calculate the next version from commits after the latest `v*` tag:
   unreleased range. Every main push still updates the draft.
 
 The pinned `release-drafter` action creates or updates the draft targeted at the
-exact main commit. Draft updates do not create tags.
+exact main commit. Push-triggered draft updates do not create tags.
 
 Each Monday at 08:00 UTC, the same serialized workflow checks the latest main
 SHA before and during the release operation. The scheduled run waits for
@@ -77,20 +77,36 @@ successful `Frontend`, `Native (macOS)`, `Native (Windows)`,
 `Analyze (javascript-typescript)`, and `Analyze (rust)` checks on that exact SHA.
 It then validates CodeQL analysis records and checks the alert API for open
 Critical and High alerts. If any check or security result is missing, pending,
-failed, stale, malformed, or unavailable, publication stops. The run refreshes
-the draft for the verified SHA and publishes it only while that SHA remains
-the current `main` head. If the current main SHA already has its calculated
-version tag, the run skips publication.
+failed, stale, malformed, or unavailable, publication stops. After checking
+that the scheduled SHA is still main, the run refreshes the draft, creates the
+calculated version tag at that exact SHA, verifies the tag target, and publishes
+the release. A conflicting/preexisting version tag makes tag creation fail and
+blocks publication. If the scheduled SHA already has its calculated version
+tag, the run skips publication.
 
 Draft updates and scheduled publication share one concurrency group. GitHub
 keeps the newest pending run when several main pushes queue, so the draft
-converges to latest main. If main advances during the scheduled checks, the
-head recheck fails and a later scheduled run can publish the new head after its
-checks pass. Feature branches and pull requests do not create drafts or publish
-releases.
+converges to latest main. Each schedule run publishes its frozen, validated
+`github.sha` snapshot. A main-head recheck before tag creation aborts if main
+advanced during the checks; a later scheduled run can publish the new head
+after its checks pass. Feature branches and pull requests do not create drafts
+or publish releases.
+
+The active `Protect release tags` ruleset in
+`.github/rulesets/release-tags.json` matches `refs/tags/v*`, permits creation,
+and blocks updates and deletions with no bypass actors. Its live id is
+`27325536`. Before making a tag, the workflow reads that exact public ruleset
+and checks its active tag target, `refs/tags/v*` condition, and update/deletion
+rules. The administrator readback verifies the empty bypass list; GitHub omits
+that field from unauthenticated public API responses. If tag creation succeeds
+but release publication fails, the version tag remains protected and the draft
+remains unpublished. An operator must publish the existing draft against that
+tag after checking the validated commit. Do not delete or retarget the tag as
+recovery.
 
 ## Ruleset source
 
 `.github/rulesets/main.json` records the active main ruleset request body for
 review. The live ruleset is active and verified; its checks include the PR
 title, commit message, frontend, macOS, Windows, and both CodeQL language jobs.
+The live release-tag ruleset is active and read back as id `27325536`.
