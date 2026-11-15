@@ -5,7 +5,7 @@ use aes_gcm::{
 use argon2::{Algorithm, Argon2, Params, Version};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use fs2::FileExt;
-use rand::{rngs::OsRng, RngCore};
+use rand::{rngs::OsRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -504,9 +504,7 @@ fn valid_date(value: &str) -> bool {
 }
 
 fn random_key() -> Zeroizing<[u8; 32]> {
-    let mut key = Zeroizing::new([0_u8; 32]);
-    OsRng.fill_bytes(key.as_mut());
-    key
+    Zeroizing::new(OsRng.gen())
 }
 
 fn derive_key(passphrase: &str, salt: &[u8]) -> Result<Zeroizing<[u8; 32]>, String> {
@@ -549,10 +547,8 @@ fn create_envelope(
     data: &[u8],
     biometric_enabled: bool,
 ) -> Result<VaultFile, String> {
-    let mut salt = [0_u8; 16];
-    let mut key_nonce = [0_u8; 12];
-    OsRng.fill_bytes(&mut salt);
-    OsRng.fill_bytes(&mut key_nonce);
+    let salt: [u8; 16] = OsRng.gen();
+    let key_nonce: [u8; 12] = OsRng.gen();
     let wrapping_key = derive_key(passphrase, &salt)?;
     let wrapped_key = encrypt(&wrapping_key, &key_nonce, key, KEY_AAD)?;
     let mut envelope = VaultFile {
@@ -591,8 +587,7 @@ fn unwrap_key(passphrase: &str, envelope: &VaultFile) -> Result<Zeroizing<[u8; 3
 }
 
 fn encrypt_data(key: &[u8; 32], data: &[u8], envelope: &mut VaultFile) -> Result<(), String> {
-    let mut nonce = [0_u8; 12];
-    OsRng.fill_bytes(&mut nonce);
+    let nonce: [u8; 12] = OsRng.gen();
     let ciphertext = encrypt(key, &nonce, data, DATA_AAD)?;
     envelope.data_nonce = B64.encode(nonce);
     envelope.ciphertext = B64.encode(ciphertext);
@@ -826,6 +821,26 @@ mod tests {
     const PASS: &str = "correct horse battery staple";
     const LEDGER: &str =
         r#"{"version":1,"accounts":[],"transactions":[],"budgets":[],"drafts":[]}"#;
+
+    #[test]
+    fn os_rng_material_is_fresh_across_keys_salts_and_aead_nonces() {
+        let first_key = random_key();
+        let second_key = random_key();
+        assert_ne!(&*first_key, &*second_key);
+
+        let mut first = create_envelope(PASS, &first_key, LEDGER.as_bytes(), false).unwrap();
+        let second = create_envelope(PASS, &second_key, LEDGER.as_bytes(), false).unwrap();
+        assert_ne!(first.salt, second.salt);
+        assert_ne!(first.key_nonce, second.key_nonce);
+        assert_ne!(first.data_nonce, second.data_nonce);
+
+        let mut seen_nonces = std::collections::HashSet::new();
+        seen_nonces.insert(first.data_nonce.clone());
+        for _ in 0..64 {
+            encrypt_data(&first_key, LEDGER.as_bytes(), &mut first).unwrap();
+            assert!(seen_nonces.insert(first.data_nonce.clone()));
+        }
+    }
 
     #[test]
     fn setup_encrypts_and_unlocks_and_lock_clears_session() {
