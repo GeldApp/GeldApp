@@ -20,12 +20,12 @@ Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with
 
 Reference: [MoneyMoney security](https://moneymoney.app/security/). These are GeldApp requirements and acceptance conditions, not an assertion of identical internals.
 
-- [x] **SEC-01 · Implemented, review pending** — Active native ledger uses versioned AES-256-GCM encryption, Argon2id-wrapped random keys, durable snapshots and corruption detection. Browser preview remains unencrypted. macOS/Windows runtime data-path validation is still required.
-- [x] **SEC-02 · Implemented, review pending** — Native create/unlock/lock/recovery flows; wrong-key, tamper, schema, migration, locking and save-before-lock tests. Vault keys stay in native memory and are zeroized on lock.
+- [x] **SEC-01 · Implemented; prototype reviewed** — Active native ledger uses versioned AES-256-GCM encryption, Argon2id-wrapped random keys, durable snapshots and corruption detection. Browser preview remains unencrypted. macOS/Windows runtime data-path validation is still required.
+- [x] **SEC-02 · Implemented; prototype reviewed** — Native create/unlock/lock/recovery flows; wrong-key, tamper, schema, migration, locking and save-before-lock tests. Vault keys stay in native memory and are zeroized on lock.
 - [ ] **SEC-03 · Partial** — Optional macOS Keychain item protects the vault key with current-biometry access control. No bank-provider passwords exist or are stored yet; a separate credential boundary is future work. Signed app entitlement and real Keychain behavior need device validation.
 - [ ] **SEC-04 · Partial** — Startup Touch ID uses native access control on the actual vault key; cancel/unavailable/enrollment changes fail closed and passphrase recovery remains. Physical Touch ID and signed-app testing remain outstanding.
 - [ ] **SEC-05** — Auto-lock after idle, sleep and OS session lock; clear decrypted frontend state and native key material. Test outstanding saves during lock.
-- [x] **SEC-06 · Implemented, review pending** — Explicit migration validates the full ledger and encrypts the selected legacy snapshot; `ledger.json`, `ledger.previous.json` and `ledger.next.json` remain untouched for manual review/cleanup. Authenticated prior-vault recovery preserves damaged evidence. Copies in backups cannot be erased remotely.
+- [x] **SEC-06 · Implemented; prototype reviewed** — Explicit migration validates the full ledger and encrypts the selected legacy snapshot; `ledger.json`, `ledger.previous.json` and `ledger.next.json` remain untouched for manual review/cleanup. Authenticated prior-vault recovery preserves damaged evidence. Copies in backups cannot be erased remotely.
 - [ ] **SEC-07** — Windows credential protection and optional Windows Hello, with equivalent recovery semantics and platform tests.
 - [ ] **SEC-08** — Safe exports: neutralize spreadsheet formulas in merchant/note cells while preserving signed numeric amounts. Untrusted-file size/schema limits and migration tests.
 - [ ] **REL-01** — Signed/notarized macOS distribution, signed Windows installer, verified updates and rollback policy.
@@ -113,8 +113,8 @@ These are our roadmap, separate from MoneyMoney feature-parity claims. See [arch
 - [x] Remote repository configured and reviewed prototype/brand/quality history pushed.
 - [x] Repository merge settings: squash only, resulting title from PR title, body from PR body.
 - [x] `v0.1.0` prototype baseline tag; no release published.
-- [ ] **CI-01 · In progress** — Proper frontend lint/build/test and native formatting/clippy/build/test jobs, plus workflow syntax validation.
-- [ ] **CI-02 · In progress** — CodeQL for JavaScript/TypeScript and Rust; never report a skipped scan as successful analysis.
-- [ ] **CI-03 · In progress** — Conventional PR-title and commit checks. Main receives conventional squash titles.
-- [ ] **CI-04 · In progress** — Standard/community actions update a versioned draft release on main commits. Versions: feature minor, breaking major, other accepted types patch; weekly publication is automatic only after checks pass for an exact main SHA, with no empty releases.
+- [x] **CI-01** — Frontend lint/build/tests and native formatting/Clippy/build/tests run in required macOS and Windows CI. Workflow syntax was validated with actionlint; existing lint warnings remain visible.
+- [x] **CI-02** — Required CodeQL analyses for JavaScript/TypeScript and Rust, plus the findings gate. Live checks passed; three vault findings were addressed through direct OS CSPRNG generation rather than suppressed.
+- [x] **CI-03** — Required Conventional PR-title and commit checks. Main receives Conventional Commit squash titles.
+- [x] **CI-04 · Configured** — Standard/community actions update the implied next-version draft on main commits. Feature/breaking changes select minor/major; ordinary commits share the next patch draft until a release tag. Monday 08:00 UTC publication is gated on an exact checked SHA and immutable tag; no empty releases. Draft updates were observed live; the first scheduled publication has not yet been observed.
 - [x] **CI-05** — Required PR checks and branch enforcement are active in GitHub ruleset `27324053`: strict status checks, PR-only squash merges, Conventional Commit metadata, no force/deletion/bypass, and CodeQL findings thresholds. The repository became public during setup, resolving the original private-plan HTTP 403 errors. CI PR #5 passed all eight checks before it was merged externally.
