@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="144" viewBox="0 0 700 144" role="img" aria-labelledby="title">
+  <title id="title">GeldApp</title>
+  <rect x="4" y="4" width="136" height="136" rx="34" fill="#153f35"/>
+  <path fill="#f6f7f3" d="M72 27c-25 0-42 18-42 45s17 45 42 45c14 0 25-4 33-12V67H75v14h15v16c-5 3-10 4-18 4-16 0-26-11-26-29s10-29 26-29c7 0 13 2 18 5l9-12c-8-6-17-9-27-9z"/>
+  <path fill="#c3cd87" d="M101 89h14v14h-14z"/>
+  <text x="170" y="99" fill="#1c2d28" font-family="Manrope, 'DM Sans', sans-serif" font-size="64" font-weight="700" letter-spacing="-3">GeldApp</text>
+</svg>

@@ -1,0 +1,176 @@
+:root {
+  color-scheme: light;
+  --brand-forest: #153f35;
+  --brand-forest-deep: #10372f;
+  --brand-ink: #1c2d28;
+  --brand-muted: #53675f;
+  --brand-paper: #f6f7f3;
+  --brand-surface: #fff;
+  --brand-sidebar: #edf0e9;
+  --brand-line: #dfe5dd;
+  --brand-citrus: #c3cd87;
+}
+
+html {
+  background: var(--brand-paper);
+  font-feature-settings: "ss01" on;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  color: var(--brand-ink);
+  background: var(--brand-paper);
+}
+
+.sidebar {
+  background: var(--brand-sidebar);
+  border-right-color: #d8dfd6;
+}
+
+.brand {
+  gap: 11px;
+  font-size: 25px;
+  letter-spacing: -1.2px;
+}
+
+.brand-symbol {
+  display: block;
+  object-fit: cover;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: transparent;
+  padding-bottom: 0;
+}
+
+.brand-period {
+  color: var(--brand-forest);
+  margin-left: -11px;
+}
+
+.workspace-label,
+.sidebar-section-title,
+.eyebrow {
+  color: #63736b;
+}
+
+.workspace-label {
+  font-size: 9px;
+  letter-spacing: 1.55px;
+}
+
+.nav-item {
+  border-radius: 7px;
+}
+
+.nav-item.active {
+  background: #dce6dc;
+  color: var(--brand-forest);
+  box-shadow: inset 2px 0 0 var(--brand-forest);
+}
+
+.nav-active-dot,
+.save-status > span,
+.local-tag > span {
+  background: #788f5a;
+}
+
+.local-note {
+  background: linear-gradient(145deg, #f6f7ee, #e9eee3);
+  border-color: #d9e1d4;
+}
+
+.topbar {
+  background: rgb(250 251 248 / 92%);
+  backdrop-filter: blur(12px);
+}
+
+h1,
+h2,
+.stat-value,
+.total-balance,
+.account-card-value {
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+h1 {
+  color: #1b2d27;
+  letter-spacing: -1.35px;
+}
+
+.button.primary,
+.balance-card {
+  background: var(--brand-forest);
+  border-color: var(--brand-forest);
+}
+
+.button.primary:hover {
+  background: #205746;
+}
+
+.balance-card {
+  background-image: radial-gradient(ellipse at 100% 0%, rgb(195 205 135 / 15%), transparent 52%);
+  box-shadow: 0 8px 20px rgb(20 57 46 / 10%);
+}
+
+.balance-art {
+  color: rgb(195 205 135 / 28%);
+}
+
+.panel,
+.stat-card,
+.accounts-panel {
+  border-color: var(--brand-line);
+  box-shadow: 0 2px 8px rgb(27 45 39 / 2%);
+}
+
+.stat-card {
+  border-radius: 10px;
+}
+
+.panel,
+.accounts-panel {
+  border-radius: 10px;
+}
+
+.income-bar,
+.income-key {
+  background-color: #567a61;
+}
+
+.current .income-bar {
+  background: #315b49;
+}
+
+.current .expense-bar {
+  background: #c3cd87;
+}
+
+.progress > span {
+  background: #718c67;
+}
+
+.accounts-panel {
+  background: #eef1e9;
+}
+
+.page-footer {
+  color: #607168;
+}
+
+.footer-flower {
+  color: #768a61;
+}
+
+.toast {
+  background: var(--brand-forest-deep);
+}
+
+@media (max-width: 760px) {
+  .brand-symbol {
+    flex-basis: 37px;
+    width: 37px;
+    height: 38px;
+  }
+}

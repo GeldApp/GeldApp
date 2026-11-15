@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title description">
+  <title id="title">GeldApp visual identity</title>
+  <desc id="description">Forest green and warm ivory brand sheet with the GeldApp G mark and color palette.</desc>
+  <rect width="1400" height="900" fill="#f6f7f3"/>
+  <rect x="70" y="70" width="1260" height="760" rx="26" fill="#fff"/>
+  <rect x="110" y="110" width="1180" height="420" rx="18" fill="#153f35"/>
+  <rect x="154" y="154" width="228" height="228" rx="58" fill="#f6f7f3"/>
+  <path fill="#153f35" d="M268 202c-39 0-66 28-66 75s27 75 66 75c23 0 42-8 52-21v-47h-53v24h25v14c-7 4-15 6-27 6-26 0-41-18-41-51s15-51 41-51c12 0 21 3 29 9l15-20c-12-9-26-13-41-13z"/>
+  <path fill="#c3cd87" d="M314 313h24v24h-24z"/>
+  <text x="438" y="288" fill="#f6f7f3" font-family="Manrope, 'DM Sans', sans-serif" font-size="76" font-weight="700" letter-spacing="-4">GeldApp</text>
+  <text x="441" y="336" fill="#cbd9cc" font-family="'DM Sans', sans-serif" font-size="19" letter-spacing="3">CLARITY FOR EVERYDAY FINANCES</text>
+  <text x="112" y="602" fill="#1c2d28" font-family="Manrope, 'DM Sans', sans-serif" font-size="25" font-weight="700">Color system</text>
+  <g font-family="'DM Sans', sans-serif" font-size="15" fill="#1c2d28">
+    <rect x="112" y="640" width="184" height="84" rx="10" fill="#153f35"/><text x="112" y="754">Forest · #153F35</text>
+    <rect x="330" y="640" width="184" height="84" rx="10" fill="#f6f7f3" stroke="#dfe5dd"/><text x="330" y="754">Ivory · #F6F7F3</text>
+    <rect x="548" y="640" width="184" height="84" rx="10" fill="#c3cd87"/><text x="548" y="754">Citrus · #C3CD87</text>
+    <rect x="766" y="640" width="184" height="84" rx="10" fill="#1c2d28"/><text x="766" y="754">Ink · #1C2D28</text>
+    <rect x="984" y="640" width="184" height="84" rx="10" fill="#e3eee7"/><text x="984" y="754">Sage · #E3EEE7</text>
+  </g>
+  <text x="112" y="800" fill="#53675f" font-family="'DM Sans', sans-serif" font-size="15">Mark: a composed G with a single citrus ledger cue. Use the square mark at small sizes and the wordmark in larger layouts.</text>
+</svg>
