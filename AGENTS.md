@@ -12,7 +12,7 @@ Keep updates brief, concrete, and complete. Explain limits plainly.
 - Workers make small, meaningful commits on their task branch. They must not merge to `main`, push, or modify another worker's files.
 - Before merging to `main`, require an explicit Terra verdict on the final commit(s), resolution of all blocking findings, and relevant checks. Record reviewed SHA, verdict, fixes, and validation in `docs/reviews/`.
 - The primary agent alone merges approved PRs. Keep regular Conventional Commits on task branches; squash-merge approved PRs to `main` using a Conventional Commit PR title. Require passing lint/build/test/CodeQL and commit/title checks where the GitHub plan supports enforcement. Never bypass a failing required check or force-push.
-- Every commit to `main` updates or creates a draft release with its version derived from Conventional Commits. Prefer standard/community actions over custom scripts. Publication is a separate action. Record plan/permission limitations honestly; never weaken repository visibility to bypass a plan limit.
+- Every commit to `main` updates or creates a draft release with its version derived from Conventional Commits. Prefer standard/community actions over custom scripts. Weekly publication is permitted only for a frozen main SHA after required build, test and security checks pass. Skip empty releases and fail closed on missing or failed checks. Record plan/permission limitations honestly; never weaken repository visibility to bypass a plan limit.
 - Preserve dirty work and credentials. Never commit local financial data, secrets, build outputs, agent scratch files, or worktrees.
 
 ## Documentation and checks
