@@ -291,6 +291,23 @@ impl VaultSession {
     }
 
     pub fn set_biometric(&self, directory: &Path, enabled: bool) -> Result<(), String> {
+        self.set_biometric_with(
+            directory,
+            enabled,
+            platform_store_biometric_key,
+            platform_delete_biometric_key,
+            write_vault,
+        )
+    }
+
+    fn set_biometric_with(
+        &self,
+        directory: &Path,
+        enabled: bool,
+        store_key: impl FnOnce(&[u8; 32]) -> Result<(), String>,
+        delete_key: impl FnOnce() -> Result<(), String>,
+        persist: impl FnOnce(&Path, &VaultFile) -> Result<(), String>,
+    ) -> Result<(), String> {
         let _operation = self
             .operation
             .lock()
@@ -304,16 +321,22 @@ impl VaultSession {
         };
         let mut envelope = read_vault(directory)?;
         if enabled {
-            platform_store_biometric_key(key)?;
+            store_key(key)?;
             envelope.biometric_enabled = true;
-            if let Err(error) = write_vault(directory, &envelope) {
-                let _ = platform_delete_biometric_key();
-                return Err(error);
+            if let Err(persist_error) = persist(directory, &envelope) {
+                return match delete_key() {
+                    Ok(()) => Err(format!(
+                        "Could not save the Touch ID setting; the saved Keychain key was removed. {persist_error}"
+                    )),
+                    Err(cleanup_error) => Err(format!(
+                        "Could not save the Touch ID setting ({persist_error}) or remove its saved Keychain key ({cleanup_error}). Use “Remove saved Touch ID key” in Settings before retrying."
+                    )),
+                };
             }
         } else {
-            platform_delete_biometric_key()?;
+            delete_key()?;
             envelope.biometric_enabled = false;
-            write_vault(directory, &envelope)?;
+            persist(directory, &envelope)?;
         }
         Ok(())
     }
@@ -922,5 +945,32 @@ mod tests {
             .unwrap();
 
         assert!(session.status(directory.path()).unwrap().biometric_enabled);
+    }
+
+    #[test]
+    fn biometric_setup_reports_orphaned_key_and_independent_removal_clears_it() {
+        let directory = tempfile::tempdir().unwrap();
+        let session = VaultSession::new();
+        session.setup(directory.path(), PASS, LEDGER).unwrap();
+
+        let error = session
+            .set_biometric_with(
+                directory.path(),
+                true,
+                |_| Ok(()),
+                || Err("mock delete failure".into()),
+                |_, _| Err("mock vault write failure".into()),
+            )
+            .unwrap_err();
+
+        assert!(error.contains("mock vault write failure"));
+        assert!(error.contains("mock delete failure"));
+        assert!(error.contains("Remove saved Touch ID key"));
+        assert!(!session.status(directory.path()).unwrap().biometric_enabled);
+
+        session
+            .set_biometric_with(directory.path(), false, |_| Ok(()), || Ok(()), write_vault)
+            .unwrap();
+        assert!(!session.status(directory.path()).unwrap().biometric_enabled);
     }
 }

@@ -2,7 +2,7 @@
 
 ## Encrypted vault branch verification
 
-- Rust vault tests: 9 passing after provider isolation. Cover setup/read/lock, wrong passphrase, ciphertext tampering, invalid ledger schema, explicit migration with retained plaintext snapshots, explicit recovery with damaged-current preservation, cleanup-failure state, and exclusive process ownership.
+- Rust vault tests: 10 passing after provider isolation. Cover setup/read/lock, wrong passphrase, ciphertext tampering, invalid ledger schema, explicit migration with retained plaintext snapshots, explicit recovery with damaged-current preservation, biometric setup cleanup failure with retryable removal, recovery cleanup-failure state, and exclusive process ownership.
 - Native: `cargo fmt --check`, `cargo test`, strict Clippy, and `npm run tauri -- build --debug --no-bundle --ci` pass on Apple Silicon macOS. Tests compile with native provider calls disabled.
 - Frontend: `npm test` passes (11 tests, including save-before-lock and locked-view cleanup after status refresh failure); `npm run build` passes.
 - Vault behavior: native active storage is AES-256-GCM encrypted under a random key wrapped by Argon2id. Browser preview still uses plaintext localStorage, with that limit called out in Settings.
