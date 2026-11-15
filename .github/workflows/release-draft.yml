@@ -3,12 +3,15 @@ name: Release draft
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 8 * * 1'
 
 permissions:
   contents: read
+  checks: read
+  security-events: read
 
-# Only one release-draft writer at a time. If main advances during a run, GitHub
-# keeps the newest pending run, which converges the draft to the latest main.
+# Draft updates and scheduled publication share one writer lock.
 concurrency:
   group: release-draft-main
   cancel-in-progress: false
@@ -17,12 +20,16 @@ jobs:
   update:
     name: Update draft release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
+      checks: read
       pull-requests: read
+      security-events: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -37,11 +44,205 @@ jobs:
           search_commit_body: true
           enable_prerelease_mode: false
 
-      - name: Create or update draft release
+      - name: Read current main head before weekly checks
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        id: main-head-before-checks
+        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        with:
+          route: GET /repos/{owner}/{repo}/git/ref/{ref}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          ref: heads/main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require scheduled SHA to remain current main
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-checks.outputs.data).object.sha != github.sha }}
+        run: exit 1
+
+      - name: Wait for Frontend check on this main commit
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Frontend
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for Native (macOS) check on this main commit
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Native (macOS)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for Native (Windows) check on this main commit
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Native (Windows)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for CodeQL JavaScript/TypeScript analysis on this main commit
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Analyze (javascript-typescript)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for CodeQL Rust analysis on this main commit
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Analyze (rust)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Fetch CodeQL analyses for main
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        id: codeql-analyses
+        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        with:
+          route: GET /repos/{owner}/{repo}/code-scanning/analyses
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          ref: refs/heads/main
+          tool_name: CodeQL
+          per_page: 2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require CodeQL analyses on this exact main commit
+        if: >-
+          ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && (
+            fromJSON(steps.codeql-analyses.outputs.data)[0].commit_sha != github.sha ||
+            fromJSON(steps.codeql-analyses.outputs.data)[1].commit_sha != github.sha ||
+            fromJSON(steps.codeql-analyses.outputs.data)[0].ref != 'refs/heads/main' ||
+            fromJSON(steps.codeql-analyses.outputs.data)[1].ref != 'refs/heads/main' ||
+            fromJSON(steps.codeql-analyses.outputs.data)[0].tool.name != 'CodeQL' ||
+            fromJSON(steps.codeql-analyses.outputs.data)[1].tool.name != 'CodeQL' ||
+            toJSON(fromJSON(steps.codeql-analyses.outputs.data)[0].error) != '""' ||
+            toJSON(fromJSON(steps.codeql-analyses.outputs.data)[1].error) != '""' ||
+            !((fromJSON(steps.codeql-analyses.outputs.data)[0].category == '/language:rust' && fromJSON(steps.codeql-analyses.outputs.data)[1].category == '/language:javascript-typescript') ||
+              (fromJSON(steps.codeql-analyses.outputs.data)[0].category == '/language:javascript-typescript' && fromJSON(steps.codeql-analyses.outputs.data)[1].category == '/language:rust'))
+          ) }}
+        run: exit 1
+
+      - name: Fetch critical CodeQL alerts for main
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        id: codeql-critical
+        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        with:
+          route: GET /repos/{owner}/{repo}/code-scanning/alerts
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          ref: refs/heads/main
+          state: open
+          tool_name: CodeQL
+          severity: critical
+          per_page: 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Reject critical CodeQL alerts
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && steps.codeql-critical.outputs.data != '[]' }}
+        run: exit 1
+
+      - name: Fetch high CodeQL alerts for main
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        id: codeql-high
+        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        with:
+          route: GET /repos/{owner}/{repo}/code-scanning/alerts
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          ref: refs/heads/main
+          state: open
+          tool_name: CodeQL
+          severity: high
+          per_page: 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Reject high CodeQL alerts
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && steps.codeql-high.outputs.data != '[]' }}
+        run: exit 1
+
+      - name: Recheck main head before updating the draft
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        id: main-head-before-draft
+        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        with:
+          route: GET /repos/{owner}/{repo}/git/ref/{ref}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          ref: heads/main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require main to stay on the checked SHA
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-draft.outputs.data).object.sha != github.sha }}
+        run: exit 1
+
+      - name: Update draft release
+        if: ${{ steps.version.outputs.is_tagged != 'true' }}
         uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
         with:
           version: ${{ steps.version.outputs.version }}
-          commitish: main
+          commitish: ${{ github.sha }}
           publish: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Recheck main head before publication
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        id: main-head-before-publish
+        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        with:
+          route: GET /repos/{owner}/{repo}/git/ref/{ref}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          ref: heads/main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require exact main SHA before publication
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-publish.outputs.data).object.sha != github.sha }}
+        run: exit 1
+
+      - name: Publish weekly draft release
+        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-publish.outputs.data).object.sha == github.sha }}
+        uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+        with:
+          version: ${{ steps.version.outputs.version }}
+          commitish: ${{ github.sha }}
+          publish: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
