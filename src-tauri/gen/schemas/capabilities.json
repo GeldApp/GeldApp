@@ -1,1 +1,0 @@
-{"default":{"identifier":"default","description":"Main GeldApp window; no general filesystem or network access.","local":true,"windows":["main"],"permissions":["core:default"]}}
