@@ -45,12 +45,11 @@ CodeQL has separate JavaScript/TypeScript and Rust jobs. Rust uses CodeQL's
 `none` build mode; the normal native CI jobs still compile and test the app.
 GitHub documents both languages as supported by CodeQL.
 
-This repository is private and currently lacks GitHub Code Security
-entitlement. Its code-scanning API returns 403 (`Advanced Security must be
-enabled for this repository to use code scanning`). The CodeQL workflow always
-uploads SARIF; results need the private-repository Code Security entitlement.
-Enable that entitlement before treating CodeQL as a green security gate. This
-is a hosting-plan limitation, not a clean scan result.
+During initial setup the repository was private, and CodeQL access returned
+HTTP 403 because the hosting plan lacked Code Security. The repository is now
+public. Both language analyses and the CodeQL findings check passed on CI PR
+#5. The workflow uploads SARIF on all supported events; unavailable or failed
+analysis must never be treated as a clean scan.
 
 Fork PRs use the unprivileged `pull_request` event and read-only token. GitHub
 allows code-scanning SARIF uploads from `pull_request` runs with read-only
@@ -58,10 +57,10 @@ tokens. No workflow checks out or executes untrusted code from
 `pull_request_target`.
 
 The `Analyze (javascript-typescript)` and `Analyze (rust)` jobs indicate that
-the analyses completed. Require GitHub's **Code scanning results / CodeQL**
-check as a separate merge-protection rule so alerts affect merges. Set the
-security-alert threshold to **High or higher** (which includes Critical); a
-workflow job success alone does not mean that no alerts were found. GitHub
+the analyses completed. The active ruleset separately requires CodeQL results
+with a security-alert threshold of **High or higher** (including Critical),
+plus all quality alerts. A workflow job success alone does not mean that no
+alerts were found. GitHub
 documents this code-scanning threshold rule in [Set code scanning merge
 protection](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/set-merge-protection).
 
@@ -100,17 +99,15 @@ request commits do not create draft releases.
 
 ## Main branch ruleset
 
-`.github/rulesets/main.json` is the REST request body for the intended active
+`.github/rulesets/main.json` is the REST request body for the active
 `main` ruleset. It requires pull requests, squash only, strict passing checks,
 Conventional Commit subjects, no force pushes or branch deletion, and CodeQL
 results with a High-or-higher security alert threshold. It grants no bypass
-actors. The ruleset API requires repository Administration write access. GitHub
-currently blocks this private repository's ruleset API on its plan (403), and
-CodeQL result enforcement also requires Code Security entitlement. Apply the
-payload only after those plan features are available.
+actors. Ruleset `27324053` is active and its settings were read back from the
+GitHub API. The initial private-repository HTTP 403 restriction was resolved
+when the repository became public. Updating the ruleset requires repository
+Administration write access.
 
 The required status contexts in the JSON match job names declared by the
-workflows. Verify GitHub's actual check-run context names after the workflows
-have completed once, then adjust those values if the UI displays a workflow
-prefix. The repository's squash-only merge setting is already enabled; the
+workflows and were verified against the live check runs on CI PR #5. The repository's squash-only merge setting is already enabled; the
 ruleset repeats that constraint for branch protection.
