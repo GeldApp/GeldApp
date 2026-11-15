@@ -669,6 +669,14 @@ fn write_exact_atomic_stage(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 
 fn write_vault(directory: &Path, envelope: &VaultFile) -> Result<(), String> {
+    write_vault_with(directory, envelope, |from, to| fs::rename(from, to))
+}
+
+fn write_vault_with(
+    directory: &Path,
+    envelope: &VaultFile,
+    mut rename: impl FnMut(&Path, &Path) -> std::io::Result<()>,
+) -> Result<(), String> {
     fs::create_dir_all(directory).map_err(|_| "Could not prepare vault storage".to_string())?;
     #[cfg(unix)]
     {
@@ -695,20 +703,38 @@ fn write_vault(directory: &Path, envelope: &VaultFile) -> Result<(), String> {
         .map_err(|_| "Could not save encrypted vault".to_string())?;
     drop(file);
     if current.exists() {
-        if previous.exists() {
-            fs::remove_file(&previous)
-                .map_err(|_| "Could not rotate encrypted vault snapshots".to_string())?;
-        }
-        fs::rename(&current, &previous)
+        // Stage and sync a copy before rotating the previous snapshot. Keep the
+        // current file in place until the new snapshot atomically replaces it.
+        let previous_stage = directory.join("vault.previous.next.enc");
+        let previous_bytes = fs::read(&current)
+            .map_err(|_| "Could not preserve previous encrypted vault".to_string())?;
+        write_encrypted_stage(&previous_stage, &previous_bytes)?;
+        rename(&previous_stage, &previous)
             .map_err(|_| "Could not preserve previous encrypted vault".to_string())?;
     }
-    fs::rename(&next, &current).map_err(|_| {
+    rename(&next, &current).map_err(|_| {
         "Could not finalize encrypted vault. The prior encrypted copy was preserved.".to_string()
     })?;
     if let Ok(dir) = fs::File::open(directory) {
         let _ = dir.sync_all();
     }
     Ok(())
+}
+
+fn write_encrypted_stage(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options
+        .open(path)
+        .map_err(|_| "Could not stage previous encrypted vault".to_string())?;
+    file.write_all(bytes)
+        .and_then(|_| file.sync_all())
+        .map_err(|_| "Could not stage previous encrypted vault".to_string())
 }
 
 fn legacy_files(directory: &Path) -> Vec<String> {
@@ -948,10 +974,11 @@ mod tests {
     }
 
     #[test]
-    fn biometric_setup_reports_orphaned_key_and_independent_removal_clears_it() {
+    fn failed_current_replacement_keeps_vault_readable_and_allows_key_cleanup_retry() {
         let directory = tempfile::tempdir().unwrap();
         let session = VaultSession::new();
         session.setup(directory.path(), PASS, LEDGER).unwrap();
+        let current_path = vault_path(directory.path());
 
         let error = session
             .set_biometric_with(
@@ -959,18 +986,74 @@ mod tests {
                 true,
                 |_| Ok(()),
                 || Err("mock delete failure".into()),
-                |_, _| Err("mock vault write failure".into()),
+                |directory, envelope| {
+                    write_vault_with(directory, envelope, |from, to| {
+                        if to == current_path {
+                            Err(std::io::Error::new(
+                                std::io::ErrorKind::PermissionDenied,
+                                "injected current replacement failure",
+                            ))
+                        } else {
+                            fs::rename(from, to)
+                        }
+                    })
+                },
             )
             .unwrap_err();
 
-        assert!(error.contains("mock vault write failure"));
+        assert!(error.contains("Could not finalize encrypted vault"));
         assert!(error.contains("mock delete failure"));
         assert!(error.contains("Remove saved Touch ID key"));
+        assert!(current_path.is_file());
+        assert!(previous_path(directory.path()).is_file());
+        assert_eq!(
+            session.load(directory.path()).unwrap().as_deref(),
+            Some(LEDGER)
+        );
         assert!(!session.status(directory.path()).unwrap().biometric_enabled);
 
         session
             .set_biometric_with(directory.path(), false, |_| Ok(()), || Ok(()), write_vault)
             .unwrap();
         assert!(!session.status(directory.path()).unwrap().biometric_enabled);
+    }
+
+    #[test]
+    fn previous_snapshot_rotation_failure_preserves_both_existing_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let session = VaultSession::new();
+        session.setup(directory.path(), PASS, LEDGER).unwrap();
+        let newer = r#"{"version":1,"accounts":[],"transactions":[],"budgets":[{"id":"b1","category":"Groceries","limit":100}],"drafts":[]}"#;
+        session.save(directory.path(), newer).unwrap();
+        let current_before = fs::read(vault_path(directory.path())).unwrap();
+        let previous_before = fs::read(previous_path(directory.path())).unwrap();
+        let mut envelope = read_vault(directory.path()).unwrap();
+        envelope.biometric_enabled = true;
+
+        let error = write_vault_with(directory.path(), &envelope, |from, to| {
+            if to == previous_path(directory.path()) {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "injected previous rotation failure",
+                ))
+            } else {
+                fs::rename(from, to)
+            }
+        })
+        .unwrap_err();
+
+        assert!(error.contains("Could not preserve previous encrypted vault"));
+        assert_eq!(
+            fs::read(vault_path(directory.path())).unwrap(),
+            current_before
+        );
+        assert_eq!(
+            fs::read(previous_path(directory.path())).unwrap(),
+            previous_before
+        );
+        assert_eq!(
+            session.load(directory.path()).unwrap().as_deref(),
+            Some(newer)
+        );
     }
 }
