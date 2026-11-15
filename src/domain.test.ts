@@ -10,7 +10,7 @@ describe('money and account validation',()=>{
 });
 describe('CSV import',()=>{
  it('round-trips commas, quotes, line breaks and Unicode',()=>{const tx={...demoLedger().transactions[0],merchant:'Café, "North"',note:'hello\nworld'};const result=parseCsv(exportCsv([tx]),tx.accountId);expect(result[0]).toMatchObject({merchant:tx.merchant,note:tx.note,amount:tx.amount,date:tx.date,category:tx.category});});
- it('neutralizes spreadsheet formulas in text while keeping signed amounts numeric',()=>{
+ it('prefixes formula-like text fields and keeps signed amounts numeric',()=>{
   const tx:Transaction={...demoLedger().transactions[0],merchant:'  =1+1',category:'\t+SUM(1,1)' as unknown as Transaction['category'],note:'\u0000@SUM("A",1)',amount:-1234};
   const csv=exportCsv([tx]);
   expect(csv).toContain('"\'  =1+1"');

@@ -39,13 +39,13 @@ export function validDate(value: unknown): value is string {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value;
 }
 const escapeCsv = (s: string) => '"' + s.replaceAll('"', '""') + '"';
-const safeCsvText = (s: string) => {
+const prefixFormulaLikeCsvText = (s: string) => {
   // Spreadsheet applications may trim leading whitespace/control characters
   // before interpreting a cell. Prefix formula-like text before CSV quoting.
   return escapeCsv(/^[\s\p{Cc}]*[=+\-@]/u.test(s) ? `'${s}` : s);
 };
 export function exportCsv(transactions: Transaction[]) {
-  return ['date,merchant,amount,category,note', ...transactions.map(t => [safeCsvText(t.date), safeCsvText(t.merchant), (t.amount / 100).toFixed(2), safeCsvText(t.category), safeCsvText(t.note)].join(','))].join('\r\n');
+  return ['date,merchant,amount,category,note', ...transactions.map(t => [prefixFormulaLikeCsvText(t.date), prefixFormulaLikeCsvText(t.merchant), (t.amount / 100).toFixed(2), prefixFormulaLikeCsvText(t.category), prefixFormulaLikeCsvText(t.note)].join(','))].join('\r\n');
 }
 export function parseCsv(text: string, accountId: string): Transaction[] {
   const rows: string[][] = []; let row: string[] = [], field = '', quoted = false;
