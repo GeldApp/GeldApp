@@ -32,8 +32,13 @@ jobs:
           test -s site/index.html
           test -s site/assets/site.css
           test -s site/assets/mark.svg
+          test -s site/assets/fonts/dm-sans-latin-wght-normal.woff2
+          test -s site/assets/fonts/manrope-latin-wght-normal.woff2
+          test -s site/assets/fonts/OFL-DM-Sans.txt
+          test -s site/assets/fonts/OFL-Manrope.txt
           grep -q 'href="assets/site.css"' site/index.html
           grep -q 'src="assets/mark.svg"' site/index.html
+          ! grep -qE 'https://(fonts\.googleapis\.com|fonts\.gstatic\.com)' site/assets/site.css
           ! grep -qE 'src="(/src/|/assets/)|href="/src/' site/index.html
 
   deploy:
