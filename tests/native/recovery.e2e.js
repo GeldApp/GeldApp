@@ -17,7 +17,7 @@ describe('native vault recovery', () => {
     await recovery.$('button*=Recover previous snapshot').click();
     const error = await $('p[role="alert"]');
     await error.waitForDisplayed({ timeout: 30_000 });
-    assert.match(await error.getText(), /Previous vault authentication failed|Could not unlock previous vault/i);
+    assert.match(await error.getText(), /Could not recover previous vault/i);
     assert.ok((await $('h1').getText()).includes('Welcome back.'), 'failed recovery must remain locked');
 
     passphraseField = await $('input[type="password"]');

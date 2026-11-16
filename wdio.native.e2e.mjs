@@ -3,7 +3,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const application = path.join(root, 'src-tauri', 'target', 'debug', process.platform === 'win32' ? 'geldapp.exe' : 'geldapp');
+const application = path.join(root, 'src-tauri', 'target', 'native-e2e', 'debug', process.platform === 'win32' ? 'geldapp.exe' : 'geldapp');
 
 export const config = {
   runner: 'local',

@@ -823,6 +823,21 @@ mod tests {
         r#"{"version":1,"accounts":[],"transactions":[],"budgets":[],"drafts":[]}"#;
 
     #[test]
+    fn legacy_argon2id_derivation_remains_compatible() {
+        let salt = [1_u8; 16];
+        let derived = derive_key("fixture passphrase for KDF", &salt).unwrap();
+        // Fixed vector generated with argon2 0.5 before the 0.6 dependency update.
+        assert_eq!(
+            derived.as_ref(),
+            &[
+                0x51, 0x20, 0x43, 0xe6, 0xcc, 0x9e, 0xf6, 0xb4, 0xda, 0xd3, 0xec, 0x94, 0x86, 0x52,
+                0x0e, 0x6c, 0x42, 0x35, 0x75, 0x9f, 0xd8, 0x87, 0x52, 0xeb, 0xf7, 0xf8, 0xa0, 0x6a,
+                0x02, 0xfb, 0x79, 0x83,
+            ]
+        );
+    }
+
+    #[test]
     fn os_rng_material_is_fresh_across_keys_salts_and_aead_nonces() {
         let first_key = random_key();
         let second_key = random_key();

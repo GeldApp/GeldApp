@@ -19,22 +19,29 @@ fn data_directory(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         }
         let directory = std::env::var_os("GELDAPP_E2E_DATA_DIR")
             .map(PathBuf::from)
-            .ok_or_else(|| "GELDAPP_E2E_DATA_DIR must point to a temporary test directory.".to_string())?;
+            .ok_or_else(|| {
+                "GELDAPP_E2E_DATA_DIR must point to a temporary test directory.".to_string()
+            })?;
         let temp_root = std::env::var_os("RUNNER_TEMP")
             .map(PathBuf::from)
             .unwrap_or_else(std::env::temp_dir);
-        let expected_parent = temp_root.canonicalize()
+        let expected_parent = temp_root
+            .canonicalize()
             .map_err(|_| "Could not locate the temporary test directory.".to_string())?;
         let actual_parent = directory.parent()
             .and_then(|parent| parent.canonicalize().ok())
             .ok_or_else(|| "The native e2e data directory must be a direct child of the temporary test directory.".to_string())?;
         if actual_parent != expected_parent
-            || !directory.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.starts_with("geldapp-e2e-"))
-            || std::fs::symlink_metadata(&directory).is_ok_and(|metadata| metadata.file_type().is_symlink())
+            || !directory
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("geldapp-e2e-"))
+            || std::fs::symlink_metadata(&directory)
+                .is_ok_and(|metadata| metadata.file_type().is_symlink())
         {
             return Err("The native e2e data directory must be a new, isolated geldapp-e2e-* directory under the runner temporary directory.".into());
         }
-        return Ok(directory);
+        Ok(directory)
     }
 
     #[cfg(not(feature = "e2e"))]

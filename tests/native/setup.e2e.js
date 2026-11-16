@@ -27,12 +27,20 @@ describe('native vault setup', () => {
       timeoutMsg: 'The compiled app did not unlock after native vault creation.',
     });
 
-    const appBinary = path.resolve('src-tauri/target/debug', process.platform === 'win32' ? 'geldapp.exe' : 'geldapp');
+    const appBinary = path.resolve('src-tauri/target/native-e2e/debug', process.platform === 'win32' ? 'geldapp.exe' : 'geldapp');
     const secondProcess = spawn(appBinary, [], {
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, TAURI_WEBDRIVER_PORT: '4446' },
     });
-    const exited = new Promise((resolve) => secondProcess.once('exit', (code, signal) => resolve({ code, signal })));
+    let output = '';
+    for (const stream of [secondProcess.stdout, secondProcess.stderr]) {
+      stream.setEncoding('utf8');
+      stream.on('data', (chunk) => { output = `${output}${chunk}`.slice(-8_000); });
+    }
+    const exited = new Promise((resolve) => {
+      secondProcess.once('error', (error) => resolve({ error }));
+      secondProcess.once('exit', (code, signal) => resolve({ code, signal }));
+    });
     const processResult = await Promise.race([
       exited,
       delay(10_000).then(() => null),
@@ -42,7 +50,9 @@ describe('native vault setup', () => {
       await exited;
     }
     assert.notEqual(processResult, null, 'a second app process must not open the active vault');
+    assert.equal(processResult.error, undefined, `could not launch second app process: ${processResult.error?.message}`);
     assert.notEqual(processResult.code, 0, 'a second app process must fail to acquire the vault lock');
+    assert.match(output, /Another GeldApp process already owns this vault/, 'second process must fail specifically on the held vault lock');
     await $('button*=Transactions').click();
     await $('button*=REWE').click();
     await $('textarea').setValue(persistedNote);

@@ -14,7 +14,7 @@ Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with
 - [x] IBAN checksum validation and payment drafts; **no payment execution**.
 - [x] Passphrase-encrypted backup/restore, separate from the active ledger.
 - [x] macOS development bundle builds and launches; limited native persistence verified.
-- [ ] Windows native build and runtime verification; code portability alone is insufficient. An isolated compiled-app smoke is configured for macOS and Windows CI; its first local macOS create/save/lock/restart/wrong-passphrase/reopen run passed, but hosted Windows execution is pending.
+- [ ] Windows native build and runtime verification; code portability alone is insufficient. An isolated compiled-app smoke now covers create, save, lock, competing-process exclusion, restart, wrong-passphrase rejection, reopen, and previous-snapshot recovery in macOS and Windows CI. Local macOS runtime passed; hosted Windows execution is pending.
 
 ## P0 — Trustworthy local foundation
 
