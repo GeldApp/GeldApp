@@ -9,6 +9,10 @@
     "preview": "vite preview --host 127.0.0.1",
     "tauri": "tauri",
     "test": "vitest run",
+    "build:native-e2e": "tsc -b && vite build --mode native-e2e",
+    "native:e2e:build": "tauri build --debug --no-bundle --ci --features e2e --config src-tauri/tauri.e2e.conf.json",
+    "native:e2e:setup": "wdio run wdio.native.e2e.mjs --spec tests/native/setup.e2e.js",
+    "native:e2e:reopen": "wdio run wdio.native.e2e.mjs --spec tests/native/reopen.e2e.js",
     "lint": "biome lint ."
   },
   "dependencies": {
@@ -27,6 +31,12 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "@wdio/cli": "^9.33.1",
+    "@wdio/local-runner": "^9.33.1",
+    "@wdio/mocha-framework": "^9.33.1",
+    "@wdio/spec-reporter": "^9.33.1",
+    "@wdio/tauri-plugin": "^1.5.1",
+    "@wdio/tauri-service": "^1.5.1",
     "typescript": "~5.7.2",
     "vite": "^6.0.5",
     "vitest": "^5.1.0"

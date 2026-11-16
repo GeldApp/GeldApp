@@ -740,7 +740,7 @@ fn legacy_files(directory: &Path) -> Vec<String> {
         .collect()
 }
 
-#[cfg(all(target_os = "macos", not(test)))]
+#[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
 mod keychain {
     use super::Zeroizing;
     unsafe extern "C" {
@@ -781,35 +781,35 @@ mod keychain {
     }
 }
 
-#[cfg(all(target_os = "macos", not(test)))]
+#[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
 fn platform_biometry_available() -> bool {
     keychain::available()
 }
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]
 fn platform_biometry_available() -> bool {
     false
 }
-#[cfg(all(target_os = "macos", not(test)))]
+#[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
 fn platform_store_biometric_key(key: &[u8; 32]) -> Result<(), String> {
     keychain::store(key)
 }
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]
 fn platform_store_biometric_key(_: &[u8; 32]) -> Result<(), String> {
     Err("Biometric unlocking is supported only in the macOS app.".into())
 }
-#[cfg(all(target_os = "macos", not(test)))]
+#[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
 fn platform_load_biometric_key() -> Result<Zeroizing<[u8; 32]>, String> {
     keychain::load()
 }
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]
 fn platform_load_biometric_key() -> Result<Zeroizing<[u8; 32]>, String> {
     Err("Biometric unlocking is supported only in the macOS app.".into())
 }
-#[cfg(all(target_os = "macos", not(test)))]
+#[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
 fn platform_delete_biometric_key() -> Result<(), String> {
     keychain::delete()
 }
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]
 fn platform_delete_biometric_key() -> Result<(), String> {
     Err("Biometric unlocking is supported only in the macOS app.".into())
 }

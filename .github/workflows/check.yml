@@ -58,6 +58,18 @@ jobs:
       - run: cargo check --manifest-path src-tauri/Cargo.toml --locked
       - name: Compile Tauri application
         run: npm run tauri -- build --debug --no-bundle --ci
+      - name: Build isolated native vault smoke application
+        run: npm run native:e2e:build
+      - name: Create and lock synthetic native vault
+        run: npm run native:e2e:setup
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+      - name: Restart app and verify passphrase behavior
+        run: npm run native:e2e:reopen
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
   native-windows:
     name: Native (Windows)
     runs-on: windows-latest
@@ -84,3 +96,15 @@ jobs:
       - run: cargo check --manifest-path src-tauri/Cargo.toml --locked
       - name: Compile Tauri application
         run: npm run tauri -- build --debug --no-bundle --ci
+      - name: Build isolated native vault smoke application
+        run: npm run native:e2e:build
+      - name: Create and lock synthetic native vault
+        run: npm run native:e2e:setup
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+      - name: Restart app and verify passphrase behavior
+        run: npm run native:e2e:reopen
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}

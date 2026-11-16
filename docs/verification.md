@@ -22,3 +22,12 @@ The earlier bullets below record the prototype's pre-vault checks from this date
 - Windows builds, real bank access, signed release installers, native file export dialogs, and physical-device/assistive-technology behavior have not been validated. No real bank or user financial data was used.
 
 The macOS bundle is a development build, not signed/notarized for distribution.
+
+## Native foundation follow-up — 2026-11-16
+
+- Added an opt-in Tauri WebDriver build using the official WebdriverIO Tauri service. It builds the real app and calls native vault IPC through the WebView; it does not mock commands. The test build has a separate app identifier, requires an explicit temporary data directory, and rejects a missing or mismatched test configuration before opening `VaultSession`.
+- The WebDriver server is test-only and binds to loopback. The `e2e` feature is debug-only; it compiles no macOS Keychain provider calls. The regular app build and default frontend build do not include the WebDriver bridge.
+- Actual compiled macOS app run passed: create vault, edit and persist a synthetic transaction note, save and lock, restart, reject a wrong passphrase without unlocking, reopen with the correct passphrase, and verify the changed note. Two WebDriver suites passed (setup and restart/reopen). Synthetic app data was isolated under `/private/tmp/geldapp-e2e-foundation-20261116-d`.
+- New CI steps also exercise a competing app process and damaged-current/previous-snapshot recovery. Those cases have not yet been run. The hosted Windows runtime smoke has not yet run on this candidate.
+- `npm audit --omit=dev` reports zero vulnerabilities. Full `npm audit` reports 25 findings in development-only WebdriverIO dependencies (14 high, 11 moderate); the current service release pins the affected toolchain and npm offers only a major prerelease upgrade. No affected package is in the production dependency set.
+- Signed Keychain behavior, actual biometric prompt, cancellation/unavailable/enrollment-change behavior, and physical Touch ID remain unverified. These E2E tests deliberately disable every Keychain provider entry point and do not turn on biometric unlocking.
