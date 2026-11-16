@@ -50,6 +50,11 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
 
+      - name: Lint GitHub Actions workflows
+        run: |
+          brew install actionlint
+          actionlint .github/workflows/*.yml
+
       - run: npm ci
       - run: npm run build
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check

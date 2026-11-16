@@ -28,8 +28,8 @@ Reference: [MoneyMoney security](https://moneymoney.app/security/). These are Ge
 - [x] **SEC-06 · Implemented; prototype reviewed** — Explicit migration validates the full ledger and encrypts the selected legacy snapshot; `ledger.json`, `ledger.previous.json` and `ledger.next.json` remain untouched for manual review/cleanup. Authenticated prior-vault recovery preserves damaged evidence. Copies in backups cannot be erased remotely.
 - [ ] **SEC-07** — Windows credential protection and optional Windows Hello, with equivalent recovery semantics and platform tests.
 - [ ] **SEC-08** — Safe exports: neutralize spreadsheet formulas in merchant/note cells while preserving signed numeric amounts. Untrusted-file size/schema limits and migration tests.
-- [ ] **REL-01** — Signed/notarized macOS distribution, signed Windows installer, verified updates and rollback policy.
-- [ ] **REL-02 · Partial** — Baseline frontend/Rust checks and native compilation passed GitHub CI on macOS and Windows ([run](https://github.com/GeldApp/GeldApp/actions/runs/43739038652)). Expanded lint, CodeQL, Conventional Commit and draft-release workflows are in progress; this run predates the vault implementation. Keep financial fixtures synthetic.
+- [ ] **REL-01 · Partial** — Guarded universal macOS preview DMG and exact-hash Homebrew cask automation are configured. The preview is ad-hoc signed/unnotarized with no Apple Developer ID signature; signed/notarized macOS and Windows installers, verified updates, and rollback policy remain outstanding. No installable release asset has been published yet.
+- [ ] **REL-02 · Partial** — Baseline frontend/Rust checks and native compilation passed GitHub CI on macOS and Windows ([run](https://github.com/GeldApp/GeldApp/actions/runs/43739038652)). Expanded lint, CodeQL, Conventional Commit and draft-release workflows are configured; the guarded macOS packaging and first manual publication are not yet verified. This run predates the vault implementation. Keep financial fixtures synthetic.
 
 Release gate: encrypted storage and recovery verified, critical/high review findings closed, platform-specific claims backed by actual execution.
 

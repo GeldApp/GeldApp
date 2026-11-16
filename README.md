@@ -13,7 +13,19 @@ npm test
 npm run tauri build
 ```
 
-Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS installers on macOS; build Windows installers on Windows. Desktop signing and release distribution are not configured.
+Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS installers on macOS; build Windows installers on Windows. Guarded releases build a universal macOS preview DMG for Apple Silicon and Intel. The preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature; no Apple Developer signing identity is configured.
+
+## Install the macOS preview
+
+After the first guarded GitHub release is published and its cask update has merged, install with Homebrew:
+
+```sh
+brew install --cask geldapp/tap/geldapp
+brew upgrade --cask geldapp
+brew uninstall --cask geldapp
+```
+
+Uninstall removes the app and leaves the local financial vault in place. The DMG and its SHA-256 checksum are attached to each versioned [GitHub release](https://github.com/GeldApp/GeldApp/releases). Because the preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature, macOS Gatekeeper may show a warning on first launch; Homebrew does not remove quarantine. If macOS blocks the app, use Finder's Control-click > Open flow and review the prompt. See [release and recovery details](docs/releases.md).
 
 ## Working features
 
@@ -31,7 +43,7 @@ Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS in
 
 ## Prototype boundaries
 
-Starts with illustrative demo data, not real financial data. Keep using sample data until a signed macOS build and Keychain/Touch ID behavior have been verified, the migration copies have been reviewed, and the security review is complete. The Objective-C Security/LocalAuthentication bridge builds for the selected macOS architecture. A suitable signed app identity and entitlements are required for Data Protection Keychain access; the local development identity and physical Touch ID prompts have not been verified. Windows biometric unlock is not implemented or tested.
+Starts with illustrative demo data, not real financial data. Keep using sample data until a signed macOS build and Keychain/Touch ID behavior have been verified, the migration copies have been reviewed, and the security review is complete. The Objective-C Security/LocalAuthentication bridge builds for the selected macOS architecture. A suitable signed app identity and entitlements are required for Data Protection Keychain access; the released preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature, and physical Touch ID prompts have not been verified. Windows biometric unlock is not implemented or tested.
 
 The native ledger is encrypted at rest; the browser preview is not. Legacy JSON snapshots remain plaintext after migration until the user verifies the vault and removes them manually. There are no bank connections, provider-password storage, bank API, telemetry, backend, or cloud sync. Encrypted backups remain separate from active-storage encryption. Restore replaces the current workspace after an explicit checkbox. Category edits save immediately.
 
