@@ -35,7 +35,7 @@ jobs:
 
       - name: Calculate next version from Conventional Commits
         id: version
-        uses: paulhatch/semantic-version@a8f8f59fd7f0625188492e945240f12d7ad2dca3 # v5.4.0
+        uses: paulhatch/semantic-version@5ae1354e589c5a67345fb2c6e65b025ff676d7c7 # v6.0.7
         with:
           tag_prefix: v
           major_pattern: '/^[a-z]+(?:\([^)]+\))?!:|(?:^|\n)BREAKING[- ]CHANGE:/'
@@ -47,7 +47,7 @@ jobs:
       - name: Read current main head before weekly checks
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
         id: main-head-before-checks
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: GET /repos/{owner}/{repo}/git/ref/{ref}
           owner: ${{ github.repository_owner }}
@@ -128,7 +128,7 @@ jobs:
       - name: Fetch CodeQL analyses for main
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
         id: codeql-analyses
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: GET /repos/{owner}/{repo}/code-scanning/analyses
           owner: ${{ github.repository_owner }}
@@ -158,7 +158,7 @@ jobs:
       - name: Fetch critical CodeQL alerts for main
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
         id: codeql-critical
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: GET /repos/{owner}/{repo}/code-scanning/alerts
           owner: ${{ github.repository_owner }}
@@ -178,7 +178,7 @@ jobs:
       - name: Fetch high CodeQL alerts for main
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
         id: codeql-high
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: GET /repos/{owner}/{repo}/code-scanning/alerts
           owner: ${{ github.repository_owner }}
@@ -198,7 +198,7 @@ jobs:
       - name: Recheck main head before updating the draft
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
         id: main-head-before-draft
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: GET /repos/{owner}/{repo}/git/ref/{ref}
           owner: ${{ github.repository_owner }}
@@ -224,7 +224,7 @@ jobs:
       - name: Recheck main head before publication
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
         id: main-head-before-publish
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: GET /repos/{owner}/{repo}/git/ref/{ref}
           owner: ${{ github.repository_owner }}
@@ -255,7 +255,7 @@ jobs:
 
       - name: Create release tag at the checked SHA
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-publish.outputs.data).object.sha == github.sha }}
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: POST /repos/{owner}/{repo}/git/refs
           owner: ${{ github.repository_owner }}
@@ -268,7 +268,7 @@ jobs:
       - name: Require release tag to point to the checked SHA
         if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
         id: created-tag
-        uses: octokit/request-action@dad4362715b7fb2ddedf9772c8670824af564f0d # v2.4.0
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: GET /repos/{owner}/{repo}/git/ref/{ref}
           owner: ${{ github.repository_owner }}
