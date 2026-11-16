@@ -1,30 +1,32 @@
 # GeldApp visual identity
 
-GeldApp uses a restrained forest and ivory palette for a clear, steady banking interface. The custom G mark is built from native SVG paths so the artwork stays editable and scales cleanly. Its short citrus ledger mark adds a single recognizable accent without relying on gradients or small text.
+GeldApp uses a blue-black-and-gold identity over a clear ivory interface. The original site mark is shared across the app, browser favicon, wordmark, and Tauri source icon so the product reads as one brand from landing page to desktop.
 
 ## Palette
 
 | Role | Color | Use |
 | --- | --- | --- |
-| Forest | `#153F35` | Primary actions, balance card, app mark |
-| Deep forest | `#10372F` | Toasts and high contrast surfaces |
-| Ivory | `#F6F7F3` | Main app canvas and mark foreground |
-| Ink | `#1C2D28` | Main text |
-| Muted | `#53675F` | Supporting text |
-| Citrus | `#C3CD87` | Small brand accent and selected chart values |
-| Sage | `#E3EEE7` | Secondary category surface |
+| Navy | `#123B73` | Brand mark, primary actions, balance card, selected navigation |
+| Deep navy | `#0C2B54` | Toasts and deep surfaces |
+| Warm gold | `#EFC76F` | Brand G, selected state details, current chart accents |
+| Ink | `#172536` | Main text and wordmark |
+| Muted | `#5D6876` | Supporting text |
+| Ivory gray | `#F5F6F7` | Main canvas and light surfaces |
+| Pale blue | `#E6ECF4` | Navigation rail and secondary surfaces |
+
+Gold stays on dark or tinted surfaces, or appears as a compact accent. Analytic series use blue and gold; transaction totals retain readable green for incoming money and red for outflows.
 
 ## Assets
 
-- `public/geldapp.svg` is the square mark and browser favicon.
-- `public/geldapp-wordmark.svg` is the editable lockup for larger placements.
-- `src-tauri/icons/app-icon.svg` is the Tauri icon source. Generated PNG, ICNS, ICO, Android and iOS sizes live beside it.
-- `brand-sheet.svg` is the vector presentation sheet.
+- `public/geldapp.svg` and `public/geldapp-mark.svg` share the editable site mark for browser tabs and the compact app rail.
+- `public/geldapp-wordmark.svg` is the editable lockup.
+- `src-tauri/icons/app-icon.svg` is the editable desktop icon source. `npm run tauri -- icon src-tauri/icons/app-icon.svg` regenerates the standard Tauri PNG, ICNS, ICO, Android, and iOS assets.
+- `brand-sheet.svg` presents the mark and palette.
 
-Fonts use the bundled variable Manrope for headings and DM Sans for interface copy. The mark and palette are original project artwork. Its square silhouette, broad G counter, and single contrast cue are designed to remain distinguishable at small icon sizes.
+Bundled variable Manrope headings and DM Sans interface text keep the typography consistent with the site. The SVG path remains editable and scales cleanly at small sizes.
 
 ## Interface treatment
 
-The warm ivory canvas, fine green-gray dividers, compact all-caps labels, and dark forest primary action keep dense financial information legible. Neutralized category tints make amounts and navigation carry more of the hierarchy. The compact rail uses the mark alone.
+The ivory content surface keeps transaction rows and settings readable. Navy anchors the rail and primary balance, while gold marks selected navigation and the identity. Fine blue-gray dividers and all-caps labels keep dense financial information organized. Positive and negative amounts remain distinct through green and red text.
 
-This sheet documents the interface brand as implemented. It makes no claim about native platform UI outside the generated icon assets.
+Desktop and narrow browser previews were inspected at 1280×720 and 390px. The browser preview uses demo data and local storage; it cannot establish native vault behavior, Keychain behavior, or Windows appearance.
