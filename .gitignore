@@ -5,6 +5,7 @@ src-tauri/gen/schemas/
 *.local
 .DS_Store
 artifacts/
+logs/
 *.tsbuildinfo
 
 .worktrees/
