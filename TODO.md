@@ -92,7 +92,7 @@ References: [import/export formats](https://moneymoney.app/), [import details](h
 - [ ] **IO-02 · Partial** — Export CSV, Excel, Numbers-compatible tables, OFX, CAMT and MT940; preserve source/reference fields and split semantics.
 - [ ] **IO-03** — Documented automation API and macOS scripting integration; controlled data handoff to bookkeeping/receipt tools.
 - [ ] **EXT-01** — Sandboxed connector/import/export extension boundary, explicit permissions, versioning and trust/revocation policy.
-- [x] **UX-01** — Professional theme, distinctive editable SVG logo/wordmark, desktop icons, design tokens and readable dense tables. Luna implementation and Terra review are recorded in `docs/reviews/2026-11-15-brand.md`.
+- [ ] **UX-01 · Implemented; review pending** — Blue-black-gold theme, editable site-matched SVG logo/wordmark, regenerated Tauri icons, design tokens and readable dense tables. Browser desktop/mobile review is complete; independent review and native/Windows icon appearance remain unverified. See `docs/brand.md` and `docs/brand-sheet.svg`.
 - [ ] **UX-02** — System light/dark appearance, DE/EN translation, locale-aware date/amount entry, currency formatting and keyboard shortcuts.
 - [ ] **UX-03** — Native menus/file dialogs, drag/drop imports, accessible focus and screen-reader flows, persisted window/table preferences.
 - [ ] **DATA-01** — Automated encrypted backups, retention, restore verification and schema upgrades; large-history pagination and indexing.

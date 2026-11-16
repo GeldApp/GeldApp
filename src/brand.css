@@ -1,184 +1,66 @@
 :root {
   color-scheme: light;
-  --brand-forest: #153f35;
-  --brand-forest-deep: #10372f;
-  --brand-ink: #1c2d28;
-  --brand-muted: #53675f;
-  --brand-paper: #f6f7f3;
+  --brand-blue: #123b73;
+  --brand-blue-deep: #0c2b54;
+  --brand-blue-mid: #1b4f8e;
+  --brand-gold: #efc76f;
+  --brand-gold-dark: #9c741f;
+  --brand-ink: #172536;
+  --brand-muted: #5d6876;
+  --brand-paper: #f5f6f7;
   --brand-surface: #fff;
-  --brand-sidebar: #edf0e9;
-  --brand-line: #dfe5dd;
-  --brand-citrus: #c3cd87;
-}
-
-html {
-  background: var(--brand-paper);
+  --brand-sidebar: #edf0f4;
+  --brand-line: #dfe4ea;
   font-feature-settings: "ss01" on;
   text-rendering: optimizeLegibility;
 }
 
-body {
-  color: var(--brand-ink);
-  background: var(--brand-paper);
-}
-
-.sidebar {
-  background: var(--brand-sidebar);
-  border-right-color: #d8dfd6;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-}
-
-.brand {
-  gap: 11px;
-  font-size: 25px;
-  letter-spacing: -1.2px;
-}
-
-.brand-symbol {
-  display: block;
-  object-fit: cover;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: transparent;
-  padding-bottom: 0;
-}
-
-.brand-period {
-  color: var(--brand-forest);
-  margin-left: -11px;
-}
-
-.workspace-label,
-.sidebar-section-title,
-.eyebrow {
-  color: #63736b;
-}
-
-.workspace-label {
-  font-size: 9px;
-  letter-spacing: 1.55px;
-}
-
-.nav-item {
-  border-radius: 7px;
-}
-
-.nav-item.active {
-  background: #dce6dc;
-  color: var(--brand-forest);
-  box-shadow: inset 2px 0 0 var(--brand-forest);
-}
-
-.nav-active-dot,
-.save-status > span,
-.local-tag > span {
-  background: #788f5a;
-}
-
-.local-note {
-  background: linear-gradient(145deg, #f6f7ee, #e9eee3);
-  border-color: #d9e1d4;
-}
-
-.topbar {
-  background: rgb(250 251 248 / 92%);
-  backdrop-filter: blur(12px);
-}
-
-h1,
-h2,
-.stat-value,
-.total-balance,
-.account-card-value {
-  font-variant-numeric: lining-nums tabular-nums;
-}
-
-h1 {
-  color: #1b2d27;
-  letter-spacing: -1.35px;
-}
-
-.button.primary,
-.balance-card {
-  background: var(--brand-forest);
-  border-color: var(--brand-forest);
-}
-
-.button.primary:hover {
-  background: #205746;
-}
-
-.balance-card {
-  background-image: radial-gradient(ellipse at 100% 0%, rgb(195 205 135 / 15%), transparent 52%);
-  box-shadow: 0 8px 20px rgb(20 57 46 / 10%);
-}
-
-.balance-art {
-  color: rgb(195 205 135 / 28%);
-}
-
-.panel,
-.stat-card,
-.accounts-panel {
-  border-color: var(--brand-line);
-  box-shadow: 0 2px 8px rgb(27 45 39 / 2%);
-}
-
-.stat-card {
-  border-radius: 10px;
-}
-
-.panel,
-.accounts-panel {
-  border-radius: 10px;
-}
-
-.income-bar,
-.income-key {
-  background-color: #567a61;
-}
-
-.current .income-bar {
-  background: #315b49;
-}
-
-.current .expense-bar {
-  background: #c3cd87;
-}
-
-.progress > span {
-  background: #718c67;
-}
-
-.accounts-panel {
-  background: #eef1e9;
-}
-
-.page-footer {
-  color: #607168;
-}
-
-.footer-flower {
-  color: #768a61;
-}
-
-.toast {
-  background: var(--brand-forest-deep);
-}
-
+html, body { color: var(--brand-ink); background: var(--brand-paper); }
+.sidebar { background: #e6ecf4; border-right-color: #d3ddea; overflow-y: auto; overscroll-behavior-y: contain; }
+.brand { gap: 11px; font-size: 25px; letter-spacing: -1.2px; }
+.brand-symbol { display: block; object-fit: cover; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; background: transparent; padding: 0; }
+.brand-period { color: var(--brand-blue); margin-left: -11px; }
+.workspace-label, .sidebar-section-title, .eyebrow { color: #667487; }
+.workspace-label { font-size: 9px; letter-spacing: 1.55px; }
+.nav-item { border-radius: 7px; }
+.nav-item.active { background: #fff1cf; color: var(--brand-blue); box-shadow: inset 2px 0 0 #b98b31; }
+.nav-active-dot { background: #b98b31; }
+.save-status > span, .local-tag > span { background: #718b7a; }
+.local-note { background: linear-gradient(145deg, #f7f8f9, #e9eff7); border-color: #d9e1ec; }
+.topbar { background: rgb(251 252 253 / 92%); backdrop-filter: blur(12px); }
+h1, h2, .stat-value, .total-balance, .account-card-value { font-variant-numeric: lining-nums tabular-nums; }
+h1 { color: #172536; letter-spacing: -1.35px; }
+.button.primary, .balance-card { background: var(--brand-blue); border-color: var(--brand-blue); }
+.button.primary:hover { background: var(--brand-blue-mid); }
+.balance-card { background-image: radial-gradient(ellipse at 100% 0%, rgb(239 199 111 / 18%), transparent 52%); box-shadow: 0 8px 20px rgb(18 59 115 / 12%); }
+.balance-art { color: rgb(239 199 111 / 30%); }
+.panel, .stat-card, .accounts-panel { border-color: var(--brand-line); box-shadow: 0 2px 8px rgb(23 37 54 / 3%); }
+.stat-card, .panel, .accounts-panel { border-radius: 10px; }
+.income-bar, .income-key { background-color: #5681b7; }
+.expense-bar, .expense-key { background-color: #d4ab56; }
+.current .income-bar { background: #1b4f8e; }
+.current .expense-bar { background: #c59431; }
+.progress > span { background: #718b7a; }
+.accounts-panel { background: #eef2f7; }
+.balance-card { background-color: #123b73; }
+.section-heading h2, .panel h2, .settings-card h2 { color: #1b2b40; }
+.stat-icon.peach { color: #a06f15; }
+.page-footer { color: #667487; }
+.footer-flower { color: #9c741f; }
+.toast { background: var(--brand-blue-deep); }
+.positive { color: #23744e !important; }
+.negative { color: #b43d43 !important; }
+.transaction > strong:not(.positive), .detail-amount:not(.positive) { color: #b43d43; }
+.spending-text { color: #b43d43; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: #b98b31; }
+.settings-icon.mint, .modal-symbol { color: var(--brand-blue); }
+.modal-backdrop { background: rgb(8 25 47 / 55%); }
+.field input, .field select, .field textarea { border-color: #dfe4ea; }
+.vault-screen { background: var(--brand-paper); }
+.vault-card { border-color: var(--brand-line); box-shadow: 0 18px 55px rgb(23 37 54 / 8%); }
+.vault-migration, .vault-recovery { border-color: #e2e8f0; }
+.vault-card .muted, .vault-migration small, .vault-recovery small { color: #6b7684; }
 @media (max-width: 760px) {
-  .brand {
-    gap: 0;
-    padding: 0;
-    font-size: 0;
-  }
-
-  .brand-symbol {
-    flex-basis: 37px;
-    width: 37px;
-    height: 38px;
-  }
+  .brand { gap: 0; padding: 0; font-size: 0; }
+  .brand-symbol { flex-basis: 37px; width: 37px; height: 38px; }
 }
