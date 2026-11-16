@@ -1,6 +1,13 @@
 import { isTauri, invoke } from '@tauri-apps/api/core';
 import { validateLedger, type Ledger } from './domain';
+
 const key='geldapp.ledger.v1';
+export type VaultStatus={vault_exists:boolean;unlocked:boolean;legacy_files:string[];biometric_enabled:boolean;biometric_available:boolean;biometric_supported:boolean;previous_vault_exists:boolean;browser_preview?:boolean};
+
+export async function getVaultStatus():Promise<VaultStatus> {
+  if(isTauri()) return invoke<VaultStatus>('vault_status');
+  return {vault_exists:!!localStorage.getItem(key),unlocked:true,legacy_files:[],biometric_enabled:false,biometric_available:false,biometric_supported:false,previous_vault_exists:false,browser_preview:true};
+}
 export async function loadLedger():Promise<Ledger|null> {
   const raw = isTauri() ? await invoke<string|null>('load_ledger') : localStorage.getItem(key);
   return raw ? validateLedger(JSON.parse(raw)) : null;
@@ -9,6 +16,19 @@ export async function saveLedger(ledger:Ledger) {
   const data=JSON.stringify(ledger);
   if(isTauri()) await invoke('save_ledger',{data}); else localStorage.setItem(key,data);
 }
+export async function setupVault(passphrase:string,ledger:Ledger) {
+  if(!isTauri()) { localStorage.setItem(key,JSON.stringify(ledger)); return; }
+  await invoke('setup_vault',{passphrase,data:JSON.stringify(ledger)});
+}
+export async function migrateLegacyVault(passphrase:string,source:string) {
+  await invoke('migrate_legacy_vault',{passphrase,source});
+}
+export async function unlockVault(passphrase:string) { await invoke('unlock_vault',{passphrase}); }
+export async function unlockBiometric() { await invoke('unlock_biometric'); }
+export async function recoverPreviousVault(passphrase:string) { await invoke('recover_previous_vault',{passphrase}); }
+export async function lockVault() { if(isTauri()) await invoke('lock_vault'); }
+export async function setVaultBiometric(enabled:boolean) { await invoke('set_vault_biometric',{enabled}); }
+
 export function download(name:string, data:string, type='application/json') {
   const url=URL.createObjectURL(new Blob([data],{type}));
   const a=document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
