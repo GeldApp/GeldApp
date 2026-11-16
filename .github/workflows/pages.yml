@@ -1,0 +1,81 @@
+name: GitHub Pages
+
+on:
+  pull_request:
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate static site
+        run: |
+          test -s site/index.html
+          test -s site/assets/site.css
+          test -s site/assets/mark.svg
+          test -s site/assets/fonts/dm-sans-latin-wght-normal.woff2
+          test -s site/assets/fonts/manrope-latin-wght-normal.woff2
+          test -s site/assets/fonts/OFL-DM-Sans.txt
+          test -s site/assets/fonts/OFL-Manrope.txt
+          grep -q 'href="assets/site.css"' site/index.html
+          grep -q 'src="assets/mark.svg"' site/index.html
+          reject_matches() {
+            local pattern="$1" file="$2" grep_status
+            if grep -qE "$pattern" "$file"; then
+              echo "Unexpected match for $pattern in $file" >&2
+              return 1
+            else
+              grep_status=$?
+              if [ "$grep_status" -ne 1 ]; then
+                echo "grep failed with status $grep_status for $file" >&2
+                return "$grep_status"
+              fi
+            fi
+          }
+          reject_matches 'https://(fonts\.googleapis\.com|fonts\.gstatic\.com)' site/assets/site.css
+          reject_matches 'src="(/src/|/assets/)|href="/src/' site/index.html
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
