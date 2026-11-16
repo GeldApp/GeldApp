@@ -16,28 +16,63 @@
 static NSString *const GeldService = @GELD_KEYCHAIN_SERVICE;
 static NSString *const GeldAccount = @GELD_KEYCHAIN_ACCOUNT;
 
-// Read the effective process signature only. This deliberately performs no
-// Keychain query, so Settings can explain a signing limitation safely.
-// 1 = application identifier entitlement present, 0 = absent, -1 = unknown.
-int geld_keychain_entitlement_status(void) {
+static int entitlement_present(SecTaskRef task, CFStringRef name, CFTypeID expected_type) {
+    CFErrorRef error = NULL;
+    CFTypeRef value = SecTaskCopyValueForEntitlement(task, name, &error);
+    if (value == NULL) {
+        if (error != NULL) {
+            CFRelease(error);
+            return -1;
+        }
+        return 0;
+    }
+    if (error != NULL) CFRelease(error);
+
+    int present = 0;
+    if (CFGetTypeID(value) == expected_type) {
+        if (expected_type == CFStringGetTypeID()) {
+            present = CFStringGetLength((CFStringRef)value) > 0;
+        } else if (expected_type == CFArrayGetTypeID()) {
+            CFArrayRef values = (CFArrayRef)value;
+            present = 1;
+            for (CFIndex index = 0; index < CFArrayGetCount(values); index++) {
+                CFTypeRef member = CFArrayGetValueAtIndex(values, index);
+                if (CFGetTypeID(member) != CFStringGetTypeID() ||
+                    CFStringGetLength((CFStringRef)member) == 0) {
+                    present = -1;
+                    break;
+                }
+            }
+            if (CFArrayGetCount(values) == 0) present = 0;
+        } else {
+            present = -1;
+        }
+    } else {
+        present = -1;
+    }
+    CFRelease(value);
+    return present;
+}
+
+// Inspect effective signing metadata only; never query Data Protection
+// Keychain or invoke LocalAuthentication here. Bit 0 is app identifier,
+// bit 1 keychain-access-groups, bit 2 application-groups; -1 means unknown.
+int geld_keychain_signing_entitlements(void) {
     @autoreleasepool {
         SecTaskRef task = SecTaskCreateFromSelf(kCFAllocatorDefault);
         if (task == NULL) return -1;
-        CFErrorRef error = NULL;
-        CFTypeRef value = SecTaskCopyValueForEntitlement(
-            task, CFSTR("com.apple.application-identifier"), &error
+        int app_id = entitlement_present(
+            task, CFSTR("com.apple.application-identifier"), CFStringGetTypeID()
         );
-        if (value == NULL && error != NULL) {
-            CFRelease(error);
-            CFRelease(task);
-            return -1;
-        }
-        int status = (value != NULL && CFGetTypeID(value) == CFStringGetTypeID() &&
-                      CFStringGetLength((CFStringRef)value) > 0) ? 1 : 0;
-        if (value != NULL) CFRelease(value);
-        if (error != NULL) CFRelease(error);
+        int keychain_groups = entitlement_present(
+            task, CFSTR("keychain-access-groups"), CFArrayGetTypeID()
+        );
+        int app_groups = entitlement_present(
+            task, CFSTR("com.apple.security.application-groups"), CFArrayGetTypeID()
+        );
         CFRelease(task);
-        return status;
+        if (app_id < 0 || keychain_groups < 0 || app_groups < 0) return -1;
+        return (app_id ? 1 : 0) | (keychain_groups ? 2 : 0) | (app_groups ? 4 : 0);
     }
 }
 

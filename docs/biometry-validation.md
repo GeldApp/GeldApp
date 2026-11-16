@@ -1,20 +1,18 @@
 # macOS biometric validation
 
-Current code stores the actual 32-byte vault data key in a Data Protection Keychain generic-password item. Its access control is `biometryCurrentSet` plus `WhenUnlockedThisDeviceOnly`; passphrase unlock remains the recovery path. The UI must keep hardware availability separate from signed-app capability.
+Current code stores the actual 32-byte vault data key in a Data Protection Keychain generic-password item. Its access control is `biometryCurrentSet` plus `WhenUnlockedThisDeviceOnly`; passphrase unlock remains the recovery path. The UI must keep hardware availability separate from signing-entitlement preconditions.
 
 ## Read-only capability diagnostic
 
-`geld_keychain_entitlement_status()` inspects only the running process signature through `SecTaskCopyValueForEntitlement`. It does not call `SecItem*`, probe Keychain contents, or trigger biometric UI. Results:
+`geld_keychain_signing_entitlements()` inspects only the running process signature through `SecTaskCopyValueForEntitlement`. It does not call `SecItem*`, probe Keychain contents, or trigger biometric UI. `Status.biometric_signing_entitlements` is null if inspection fails; otherwise it reports presence of three effective entitlements: `com.apple.application-identifier`, `keychain-access-groups`, and `com.apple.security.application-groups`.
 
-- `1`: `com.apple.application-identifier` entitlement is present in the effective signature. This is a prerequisite signal, not proof that a Keychain operation succeeds.
-- `0`: entitlement is absent. Explain that the current build signature does not expose the app identifier needed for its private Data Protection Keychain access group; keep passphrase unlock available and disable enabling Touch ID.
-- `-1`: inspection failed. Report capability as unknown and keep passphrase unlock available.
+The production query omits `kSecAttrAccessGroup`, so it relies on the default Data Protection Keychain access group. Apple's [default access group rules](https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps) say the default is the first `keychain-access-groups` entry, or the app identifier when no keychain groups are set; an application group cannot be the default. The UI may treat absence of both the app identifier and keychain access groups as a reason to disable Touch ID setup for this build, while retaining passphrase unlock. Application groups are reported for completeness but do not satisfy this provider's default-group prerequisite. If either default-group source is present, that is only a signing prerequisite signal, not proof that a Keychain operation succeeds. Keep the runtime operation fail-closed and passphrase recovery available.
 
-Apple describes the Data Protection Keychain access groups as derived from code-signing entitlements. On macOS the standard app identifier entitlement is `com.apple.application-identifier`; signing and provisioning requirements depend on the claimed entitlements. Do not claim that every developer needs a paid account. Inspect the effective built app with `codesign -d --entitlements :- /path/to/GeldApp.app` and `codesign -dv --verbose=4 /path/to/GeldApp.app`. This diagnostic intentionally does not assume that hardware availability implies app capability.
+Signing and provisioning requirements depend on the claimed entitlements. Do not claim that every developer needs a paid account. Inspect the effective built app with `scripts/inspect-macos-signing.sh /path/to/GeldApp.app`. This diagnostic intentionally keeps signing metadata separate from hardware availability and successful Keychain behavior.
 
-For a compact report that omits provisioning profile contents, use `scripts/inspect-macos-signing.sh /path/to/GeldApp.app`. It reads the effective signature and reports whether an embedded profile exists; it never queries or changes Keychain state.
+The signing inspector reads the effective signature and reports whether an embedded profile exists; it never queries or changes Keychain state.
 
-Observed on the current local `GeldApp.app` debug bundle: ad-hoc linker signature, no TeamIdentifier, no effective entitlement blob, and no embedded provisioning profile. This is signing metadata only; the running app was not opened and Keychain was not queried. The `SecTaskCopyValueForEntitlement` API distinguishes absent entitlement (no error) from inspection failure (error), so the runtime status can report `false` for this build while preserving `null` for unknown.
+Observed on the current local `GeldApp.app` debug bundle: ad-hoc linker signature, no TeamIdentifier, no effective entitlement blob, and no embedded provisioning profile. This is signing metadata only; the running app was not opened and Keychain was not queried. By inspection, neither app-identifier nor keychain-access-groups is present, so this build does not declare a default group for this provider; this says nothing about another signature or a successful operation.
 
 ## Preparing a unique interactive harness
 
@@ -26,7 +24,7 @@ After independent review, prepare on macOS:
 scripts/prepare-biometry-harness.sh
 ```
 
-The default uses an ad-hoc signature. A specific installed identity can be selected with `GELD_TEST_CODESIGN_IDENTITY`; an actual profile and matching app-signing entitlements can be supplied through `GELD_TEST_PROFILE` and `GELD_TEST_ENTITLEMENTS`. Set `GELD_TEST_BUNDLE_ID` only to an identifier for which that operator-provided identity/profile is valid. Never insert a fabricated team ID or reuse the production service/account. The script only compiles, signs, verifies, and prints effective entitlements. It does not perform Keychain operations. Record the emitted namespace path and retain it only for this run.
+The script creates a fresh private temporary directory and accepts no output-directory argument. It fails if the directory or app bundle is not new, and never force-signs/replaces an existing bundle. The default uses an ad-hoc signature. A specific installed identity can be selected with `GELD_TEST_CODESIGN_IDENTITY`; an actual profile and matching app-signing entitlements can be supplied through `GELD_TEST_PROFILE` and `GELD_TEST_ENTITLEMENTS`. Set `GELD_TEST_BUNDLE_ID` only to an identifier for which that operator-provided identity/profile is valid. Never insert a fabricated team ID or reuse the production service/account. The script only compiles, signs, verifies, and prints effective entitlements. It does not perform Keychain operations. Record the emitted namespace path and retain it only for this run.
 
 Then, after confirming the exact namespace from `namespace.txt`, run the generated app executable:
 

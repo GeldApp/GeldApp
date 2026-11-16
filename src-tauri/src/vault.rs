@@ -42,6 +42,13 @@ pub struct VaultFile {
 }
 
 #[derive(Serialize)]
+pub struct BiometricSigningEntitlements {
+    pub application_identifier: bool,
+    pub keychain_access_groups: bool,
+    pub application_groups: bool,
+}
+
+#[derive(Serialize)]
 pub struct Status {
     pub vault_exists: bool,
     pub unlocked: bool,
@@ -49,7 +56,7 @@ pub struct Status {
     pub biometric_enabled: bool,
     pub biometric_available: bool,
     pub biometric_supported: bool,
-    pub biometric_entitlement_available: Option<bool>,
+    pub biometric_signing_entitlements: Option<BiometricSigningEntitlements>,
     pub previous_vault_exists: bool,
 }
 
@@ -109,7 +116,7 @@ impl VaultSession {
             biometric_enabled: envelope.as_ref().is_some_and(|v| v.biometric_enabled),
             biometric_available: platform_biometry_available(),
             biometric_supported,
-            biometric_entitlement_available: platform_biometric_entitlement_available(),
+            biometric_signing_entitlements: platform_biometric_signing_entitlements(),
             previous_vault_exists: previous_path(directory).is_file(),
         })
     }
@@ -747,7 +754,7 @@ mod keychain {
     use super::Zeroizing;
     unsafe extern "C" {
         fn geld_biometry_available() -> i32;
-        fn geld_keychain_entitlement_status() -> i32;
+        fn geld_keychain_signing_entitlements() -> i32;
         fn geld_store_biometric_key(bytes: *const u8, count: i32) -> i32;
         fn geld_load_biometric_key(bytes: *mut u8, capacity: i32, length: *mut i32) -> i32;
         fn geld_delete_biometric_key() -> i32;
@@ -755,12 +762,16 @@ mod keychain {
     pub fn available() -> bool {
         unsafe { geld_biometry_available() == 1 }
     }
-    pub fn entitlement_available() -> Option<bool> {
-        match unsafe { geld_keychain_entitlement_status() } {
-            1 => Some(true),
-            0 => Some(false),
-            _ => None,
+    pub fn signing_entitlements() -> Option<super::BiometricSigningEntitlements> {
+        let status = unsafe { geld_keychain_signing_entitlements() };
+        if !(0..=7).contains(&status) {
+            return None;
         }
+        Some(super::BiometricSigningEntitlements {
+            application_identifier: status & 1 != 0,
+            keychain_access_groups: status & 2 != 0,
+            application_groups: status & 4 != 0,
+        })
     }
     pub fn store(key: &[u8; 32]) -> Result<(), String> {
         let status = unsafe { geld_store_biometric_key(key.as_ptr(), 32) };
@@ -796,11 +807,11 @@ fn platform_biometry_available() -> bool {
     keychain::available()
 }
 #[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
-fn platform_biometric_entitlement_available() -> Option<bool> {
-    keychain::entitlement_available()
+fn platform_biometric_signing_entitlements() -> Option<BiometricSigningEntitlements> {
+    keychain::signing_entitlements()
 }
 #[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]
-fn platform_biometric_entitlement_available() -> Option<bool> {
+fn platform_biometric_signing_entitlements() -> Option<BiometricSigningEntitlements> {
     None
 }
 #[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]

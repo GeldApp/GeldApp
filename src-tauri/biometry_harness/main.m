@@ -4,7 +4,7 @@
 #import <stdlib.h>
 #import <string.h>
 
-int geld_keychain_entitlement_status(void);
+int geld_keychain_signing_entitlements(void);
 int geld_biometry_available(void);
 int geld_store_biometric_key(const uint8_t *bytes, int count);
 int geld_load_biometric_key(uint8_t *output, int capacity, int *length);
@@ -24,9 +24,15 @@ int main(int argc, char **argv) {
         return 2;
     }
     if (strcmp(argv[1], "status") == 0) {
-        printf("Signed application identifier: %s\n",
-               geld_keychain_entitlement_status() == 1 ? "present" :
-               geld_keychain_entitlement_status() == 0 ? "absent" : "unknown");
+        int signing = geld_keychain_signing_entitlements();
+        if (signing < 0) {
+            puts("Signed Keychain group metadata: unknown");
+        } else {
+            printf("Signed application identifier: %s\n", signing & 1 ? "present" : "absent");
+            printf("Signed keychain-access-groups: %s\n", signing & 2 ? "present" : "absent");
+            printf("Signed application-groups: %s\n", signing & 4 ? "present" : "absent");
+            printf("Default access group declared: %s\n", signing & 3 ? "yes" : "no");
+        }
         printf("Biometric hardware policy: %s\n", geld_biometry_available() ? "available" : "unavailable");
         puts("No Keychain operation performed.");
         return 0;

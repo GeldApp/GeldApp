@@ -2,7 +2,16 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-out_dir="${1:-$(mktemp -d "${TMPDIR:-/tmp}/geld-biometry.XXXXXX")}" 
+if [[ $# -ne 0 ]]; then
+  echo "This script creates a fresh private temporary directory and accepts no output path." >&2
+  exit 2
+fi
+out_dir="$(mktemp -d "${TMPDIR:-/tmp}/geld-biometry.XXXXXX")"
+[[ -d "$out_dir" && ! -L "$out_dir" && -z "$(ls -A "$out_dir")" ]] || {
+  echo "Refusing non-empty or symlinked temporary directory." >&2
+  exit 2
+}
+out_dir="$(cd "$out_dir" && pwd -P)"
 identity="${GELD_TEST_CODESIGN_IDENTITY:--}"
 entitlements="${GELD_TEST_ENTITLEMENTS:-}"
 profile="${GELD_TEST_PROFILE:-}"
@@ -15,8 +24,14 @@ if [[ "$service" == "app.geldapp.desktop" || "$account" == "vault-key-v1" ]]; th
   echo "Refusing production Keychain namespace." >&2
   exit 2
 fi
-mkdir -p "$out_dir/GeldBiometryHarness.app/Contents/MacOS"
 app="$out_dir/GeldBiometryHarness.app"
+[[ ! -e "$app" && ! -L "$app" ]] || {
+  echo "Refusing to overwrite an existing harness bundle." >&2
+  exit 2
+}
+mkdir -m 700 "$app"
+mkdir -m 700 "$app/Contents"
+mkdir -m 700 "$app/Contents/MacOS"
 exe="$app/Contents/MacOS/GeldBiometryHarness"
 if [[ -n "$profile" ]]; then
   [[ -f "$profile" ]] || { echo "GELD_TEST_PROFILE is not a file." >&2; exit 2; }
@@ -45,7 +60,7 @@ clang -fobjc-arc \
   -framework CoreFoundation \
   -o "$exe"
 
-sign_args=(--force --sign "$identity" --identifier "$bundle_id")
+sign_args=(--sign "$identity" --identifier "$bundle_id")
 if [[ -n "$entitlements" ]]; then
   [[ -f "$entitlements" ]] || { echo "GELD_TEST_ENTITLEMENTS is not a file." >&2; exit 2; }
   sign_args+=(--entitlements "$entitlements")
