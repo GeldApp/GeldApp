@@ -20,16 +20,16 @@ Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with
 
 Reference: [MoneyMoney security](https://moneymoney.app/security/). These are GeldApp requirements and acceptance conditions, not an assertion of identical internals.
 
-- [ ] **SEC-01 · In progress** — Authenticated encryption for active data, with versioned format, durable writes and corruption detection. No silent reset to demo after failure.
-- [ ] **SEC-02 · In progress** — Create/unlock/lock flows, recovery passphrase, wrong-key and tamper tests; never expose the vault key in logs or persistent frontend storage.
-- [ ] **SEC-03 · In progress** — Optional macOS Keychain storage for vault/password material, explicit opt-in and removal. Separate future bank-credential storage from vault credentials.
-- [ ] **SEC-04 · In progress** — Optional Touch ID on startup. Native access control must gate the actual key. Cancellation/unavailability/enrollment changes fail closed; passphrase recovery remains available. Physical hardware test required.
+- [x] **SEC-01 · Implemented; prototype reviewed** — Active native ledger uses versioned AES-256-GCM encryption, Argon2id-wrapped random keys, durable snapshots and corruption detection. Browser preview remains unencrypted. macOS/Windows runtime data-path validation is still required.
+- [x] **SEC-02 · Implemented; prototype reviewed** — Native create/unlock/lock/recovery flows; wrong-key, tamper, schema, migration, locking and save-before-lock tests. Vault keys stay in native memory and are zeroized on lock.
+- [ ] **SEC-03 · Partial** — Optional macOS Keychain item protects the vault key with current-biometry access control. No bank-provider passwords exist or are stored yet; a separate credential boundary is future work. Signed app entitlement and real Keychain behavior need device validation.
+- [ ] **SEC-04 · Partial** — Startup Touch ID uses native access control on the actual vault key; cancel/unavailable/enrollment changes fail closed and passphrase recovery remains. Physical Touch ID and signed-app testing remain outstanding.
 - [ ] **SEC-05** — Auto-lock after idle, sleep and OS session lock; clear decrypted frontend state and native key material. Test outstanding saves during lock.
-- [ ] **SEC-06** — Safe migration from plaintext snapshots, including previous/temp files. Verify encrypted readback and recovery before cleanup; explain copies in backups cannot be erased remotely.
+- [x] **SEC-06 · Implemented; prototype reviewed** — Explicit migration validates the full ledger and encrypts the selected legacy snapshot; `ledger.json`, `ledger.previous.json` and `ledger.next.json` remain untouched for manual review/cleanup. Authenticated prior-vault recovery preserves damaged evidence. Copies in backups cannot be erased remotely.
 - [ ] **SEC-07** — Windows credential protection and optional Windows Hello, with equivalent recovery semantics and platform tests.
 - [ ] **SEC-08** — Safe exports: neutralize spreadsheet formulas in merchant/note cells while preserving signed numeric amounts. Untrusted-file size/schema limits and migration tests.
 - [ ] **REL-01** — Signed/notarized macOS distribution, signed Windows installer, verified updates and rollback policy.
-- [ ] **REL-02** — CI on macOS and Windows: build, domain/native tests, packaging checks and dependency audit. Keep financial fixtures synthetic.
+- [ ] **REL-02 · Partial** — Baseline frontend/Rust checks and native compilation passed GitHub CI on macOS and Windows ([run](https://github.com/GeldApp/GeldApp/actions/runs/43739038652)). Expanded lint, CodeQL, Conventional Commit and draft-release workflows are in progress; this run predates the vault implementation. Keep financial fixtures synthetic.
 
 Release gate: encrypted storage and recovery verified, critical/high review findings closed, platform-specific claims backed by actual execution.
 
@@ -92,7 +92,7 @@ References: [import/export formats](https://moneymoney.app/), [import details](h
 - [ ] **IO-02 · Partial** — Export CSV, Excel, Numbers-compatible tables, OFX, CAMT and MT940; preserve source/reference fields and split semantics.
 - [ ] **IO-03** — Documented automation API and macOS scripting integration; controlled data handoff to bookkeeping/receipt tools.
 - [ ] **EXT-01** — Sandboxed connector/import/export extension boundary, explicit permissions, versioning and trust/revocation policy.
-- [ ] **UX-01 · In progress** — Professional theme, distinctive editable logo, desktop icons, consistent design tokens and readable dense tables.
+- [x] **UX-01** — Professional theme, distinctive editable SVG logo/wordmark, desktop icons, design tokens and readable dense tables. Luna implementation and Terra review are recorded in `docs/reviews/2026-11-15-brand.md`.
 - [ ] **UX-02** — System light/dark appearance, DE/EN translation, locale-aware date/amount entry, currency formatting and keyboard shortcuts.
 - [ ] **UX-03** — Native menus/file dialogs, drag/drop imports, accessible focus and screen-reader flows, persisted window/table preferences.
 - [ ] **DATA-01** — Automated encrypted backups, retention, restore verification and schema upgrades; large-history pagination and indexing.
@@ -107,3 +107,14 @@ These are our roadmap, separate from MoneyMoney feature-parity claims. See [arch
 - [ ] **SYNC-04** — Rollback/fork threat model, quotas and metadata-leakage disclosure; two-client conflict/interrupted-upload tests.
 - [ ] **WEB-01** — Web client with encrypted IndexedDB and in-memory unlocked keys. Independent threat-model/cryptography review before real-data release.
 - [ ] **MOBILE-01** — Consider a phone companion after desktop reliability. Do not present it as shipped parity.
+
+## Delivery automation requested 2026-11-15
+
+- [x] Remote repository configured and reviewed prototype/brand/quality history pushed.
+- [x] Repository merge settings: squash only, resulting title from PR title, body from PR body.
+- [x] `v0.1.0` prototype baseline tag; no release published.
+- [x] **CI-01** — Frontend lint/build/tests and native formatting/Clippy/build/tests run in required macOS and Windows CI. Workflow syntax was validated with actionlint; existing lint warnings remain visible.
+- [x] **CI-02** — Required CodeQL analyses for JavaScript/TypeScript and Rust, plus the findings gate. Live checks passed; three vault findings were addressed through direct OS CSPRNG generation rather than suppressed.
+- [x] **CI-03** — Required Conventional PR-title and commit checks. Main receives Conventional Commit squash titles.
+- [x] **CI-04 · Configured** — Standard/community actions update the implied next-version draft on main commits. Feature/breaking changes select minor/major; ordinary commits share the next patch draft until a release tag. Monday 08:00 UTC publication is gated on an exact checked SHA and immutable tag; no empty releases. Draft updates were observed live; the first scheduled publication has not yet been observed.
+- [x] **CI-05** — Required PR checks and branch enforcement are active in GitHub ruleset `27324053`: strict status checks, PR-only squash merges, Conventional Commit metadata, no force/deletion/bypass, and CodeQL findings thresholds. The repository became public during setup, resolving the original private-plan HTTP 403 errors. CI PR #5 passed all eight checks before it was merged externally.

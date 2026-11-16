@@ -22,16 +22,21 @@ Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS in
 - Transaction search, account/category/month filters, detail editing, CSV import/export, duplicate detection.
 - Monthly category budgets and category spending breakdowns.
 - IBAN-checksummed payment drafts. No bank connection; no payment execution.
-- Local persistence: browser localStorage or app-data JSON via narrowly scoped Tauri commands. Native writes preserve a previous snapshot.
+- Native active storage: AES-256-GCM encrypted ledger with a random data key wrapped by an Argon2id passphrase key. Native saves preserve a prior encrypted snapshot; recovery is explicit and passphrase-authenticated.
+- Optional macOS Touch ID unlock stores the actual vault key in the Data Protection Keychain with `biometryCurrentSet` access control. Passphrase recovery remains available. Windows exposes biometrics as unsupported.
+- Browser preview uses localStorage without encryption. Do not enter personal financial data in the browser preview.
+- Explicit legacy migration selects one of `ledger.json`, `ledger.previous.json`, or `ledger.next.json`. It leaves every plaintext copy in place for manual review and cleanup after verifying the vault.
 - Portable passphrase-encrypted backup and restore: AES-256-GCM, random 96-bit IV and 128-bit salt, PBKDF2-SHA256 with 600,000 iterations. Authentication failures do not replace the current ledger.
 - Keyboard navigation, dialog focus trap, reduced-motion support, responsive layouts.
 
 ## Prototype boundaries
 
-Starts with illustrative demo data, not real financial data. Working storage is **not yet encrypted**. Encrypted backups do not encrypt the active ledger. Use sample data until the encrypted vault is implemented. Restore replaces the workspace and requires an explicit checkbox. No credentials, bank API, telemetry, backend, or cloud sync is included. Category edits save immediately.
+Starts with illustrative demo data, not real financial data. Keep using sample data until a signed macOS build and Keychain/Touch ID behavior have been verified, the migration copies have been reviewed, and the security review is complete. The Objective-C Security/LocalAuthentication bridge builds for the selected macOS architecture. A suitable signed app identity and entitlements are required for Data Protection Keychain access; the local development identity and physical Touch ID prompts have not been verified. Windows biometric unlock is not implemented or tested.
+
+The native ledger is encrypted at rest; the browser preview is not. Legacy JSON snapshots remain plaintext after migration until the user verifies the vault and removes them manually. There are no bank connections, provider-password storage, bank API, telemetry, backend, or cloud sync. Encrypted backups remain separate from active-storage encryption. Restore replaces the current workspace after an explicit checkbox. Category edits save immediately.
 
 Account balances are opening balances plus transactions added/imported after account creation. Demo balances are illustrative current balances and demo historical transactions are already reflected in them. For a fresh imported account, choose an opening balance from before the imported period. Imports skip identical account/date/merchant/amount/note tuples; this can collapse legitimate identical purchases, so review CSVs before importing. CSV supports comma delimiters, quoted fields, ISO dates, dot decimals, signed euro amounts, optional category/note. Limit: 10,000 rows and 15 MB per import. Single currency: EUR. Budgets recur monthly and exclude refunds from spending. Internal transfers should use the Transfers category and are excluded from cash-flow totals.
 
 DM Sans and Manrope variable fonts are bundled locally. The UI needs no remote font or image requests.
 
-See [architecture](docs/architecture.md) for the future encrypted vault and incremental sync design.
+See [architecture](docs/architecture.md) for vault details and the future incremental sync design.

@@ -25,6 +25,8 @@ body {
 .sidebar {
   background: var(--brand-sidebar);
   border-right-color: #d8dfd6;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 .brand {
