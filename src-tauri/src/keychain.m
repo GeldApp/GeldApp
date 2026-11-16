@@ -1,9 +1,45 @@
 #import <Foundation/Foundation.h>
 #import <LocalAuthentication/LocalAuthentication.h>
 #import <Security/Security.h>
+#import <Security/SecTask.h>
 
-static NSString *const GeldService = @"app.geldapp.desktop";
-static NSString *const GeldAccount = @"vault-key-v1";
+#ifndef GELD_KEYCHAIN_SERVICE
+#define GELD_KEYCHAIN_SERVICE "app.geldapp.desktop"
+#endif
+#ifndef GELD_KEYCHAIN_ACCOUNT
+#define GELD_KEYCHAIN_ACCOUNT "vault-key-v1"
+#endif
+#ifndef GELD_KEYCHAIN_REASON
+#define GELD_KEYCHAIN_REASON "Unlock your GeldApp vault"
+#endif
+
+static NSString *const GeldService = @GELD_KEYCHAIN_SERVICE;
+static NSString *const GeldAccount = @GELD_KEYCHAIN_ACCOUNT;
+
+// Read the effective process signature only. This deliberately performs no
+// Keychain query, so Settings can explain a signing limitation safely.
+// 1 = application identifier entitlement present, 0 = absent, -1 = unknown.
+int geld_keychain_entitlement_status(void) {
+    @autoreleasepool {
+        SecTaskRef task = SecTaskCreateFromSelf(kCFAllocatorDefault);
+        if (task == NULL) return -1;
+        CFErrorRef error = NULL;
+        CFTypeRef value = SecTaskCopyValueForEntitlement(
+            task, CFSTR("com.apple.application-identifier"), &error
+        );
+        if (value == NULL && error != NULL) {
+            CFRelease(error);
+            CFRelease(task);
+            return -1;
+        }
+        int status = (value != NULL && CFGetTypeID(value) == CFStringGetTypeID() &&
+                      CFStringGetLength((CFStringRef)value) > 0) ? 1 : 0;
+        if (value != NULL) CFRelease(value);
+        if (error != NULL) CFRelease(error);
+        CFRelease(task);
+        return status;
+    }
+}
 
 int geld_biometry_available(void) {
     @autoreleasepool {
@@ -49,7 +85,7 @@ int geld_load_biometric_key(uint8_t *output, int capacity, int *length) {
     @autoreleasepool {
         if (output == NULL || length == NULL || capacity < 32) return errSecParam;
         LAContext *context = [[LAContext alloc] init];
-        context.localizedReason = @"Unlock your GeldApp vault";
+        context.localizedReason = @GELD_KEYCHAIN_REASON;
         context.touchIDAuthenticationAllowableReuseDuration = 0;
         NSError *availabilityError = nil;
         if (![context canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&availabilityError]) {

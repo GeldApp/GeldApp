@@ -49,6 +49,7 @@ pub struct Status {
     pub biometric_enabled: bool,
     pub biometric_available: bool,
     pub biometric_supported: bool,
+    pub biometric_entitlement_available: Option<bool>,
     pub previous_vault_exists: bool,
 }
 
@@ -108,6 +109,7 @@ impl VaultSession {
             biometric_enabled: envelope.as_ref().is_some_and(|v| v.biometric_enabled),
             biometric_available: platform_biometry_available(),
             biometric_supported,
+            biometric_entitlement_available: platform_biometric_entitlement_available(),
             previous_vault_exists: previous_path(directory).is_file(),
         })
     }
@@ -745,12 +747,20 @@ mod keychain {
     use super::Zeroizing;
     unsafe extern "C" {
         fn geld_biometry_available() -> i32;
+        fn geld_keychain_entitlement_status() -> i32;
         fn geld_store_biometric_key(bytes: *const u8, count: i32) -> i32;
         fn geld_load_biometric_key(bytes: *mut u8, capacity: i32, length: *mut i32) -> i32;
         fn geld_delete_biometric_key() -> i32;
     }
     pub fn available() -> bool {
         unsafe { geld_biometry_available() == 1 }
+    }
+    pub fn entitlement_available() -> Option<bool> {
+        match unsafe { geld_keychain_entitlement_status() } {
+            1 => Some(true),
+            0 => Some(false),
+            _ => None,
+        }
     }
     pub fn store(key: &[u8; 32]) -> Result<(), String> {
         let status = unsafe { geld_store_biometric_key(key.as_ptr(), 32) };
@@ -784,6 +794,14 @@ mod keychain {
 #[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
 fn platform_biometry_available() -> bool {
     keychain::available()
+}
+#[cfg(all(target_os = "macos", not(test), not(feature = "e2e")))]
+fn platform_biometric_entitlement_available() -> Option<bool> {
+    keychain::entitlement_available()
+}
+#[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]
+fn platform_biometric_entitlement_available() -> Option<bool> {
+    None
 }
 #[cfg(any(not(target_os = "macos"), test, feature = "e2e"))]
 fn platform_biometry_available() -> bool {
