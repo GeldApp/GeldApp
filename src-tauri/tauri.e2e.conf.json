@@ -2,7 +2,8 @@
   "$schema": "https://schema.tauri.app/config/2",
   "identifier": "app.geldapp.desktop.e2e",
   "build": {
-    "beforeBuildCommand": "npm run build:native-e2e"
+    "beforeBuildCommand": "npm run build:native-e2e",
+    "frontendDist": "../dist-native-e2e"
   },
   "app": {
     "withGlobalTauri": true,
