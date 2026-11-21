@@ -18,7 +18,7 @@ serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 aes-gcm = "0.10"
 argon2 = "0.6"
-rand = "0.8"
+rand = "0.10"
 zeroize = { version = "1", features = ["derive"] }
 base64 = "0.23"
 fs2 = "0.4"
