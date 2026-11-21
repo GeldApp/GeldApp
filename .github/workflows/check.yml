@@ -28,6 +28,7 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run build
       - run: npm test
@@ -35,6 +36,9 @@ jobs:
   native-macos:
     name: Native (macOS)
     runs-on: macos-latest
+    env:
+      GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+      GELDAPP_E2E_LOG_DIR: ${{ runner.temp }}/geldapp-wdio-e2e-logs
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,17 +66,26 @@ jobs:
         run: npm run native:e2e:build
       - name: Create and lock synthetic native vault
         run: npm run native:e2e:setup
-        env:
-          RUNNER_TEMP: ${{ runner.temp }}
-          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
       - name: Restart app and verify passphrase behavior
         run: npm run native:e2e:reopen
-        env:
-          RUNNER_TEMP: ${{ runner.temp }}
-          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+      - name: Corrupt synthetic current snapshot and recover previous snapshot
+        run: npm run native:e2e:recovery
+      - name: Preserve synthetic native E2E evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-e2e-macos-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+            ${{ runner.temp }}/geldapp-wdio-e2e-logs
+          if-no-files-found: warn
+          retention-days: 14
   native-windows:
     name: Native (Windows)
     runs-on: windows-latest
+    env:
+      GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+      GELDAPP_E2E_LOG_DIR: ${{ runner.temp }}/geldapp-wdio-e2e-logs
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -100,11 +113,17 @@ jobs:
         run: npm run native:e2e:build
       - name: Create and lock synthetic native vault
         run: npm run native:e2e:setup
-        env:
-          RUNNER_TEMP: ${{ runner.temp }}
-          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
       - name: Restart app and verify passphrase behavior
         run: npm run native:e2e:reopen
-        env:
-          RUNNER_TEMP: ${{ runner.temp }}
-          GELDAPP_E2E_DATA_DIR: ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+      - name: Corrupt synthetic current snapshot and recover previous snapshot
+        run: npm run native:e2e:recovery
+      - name: Preserve synthetic native E2E evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-e2e-windows-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/geldapp-e2e-${{ github.run_id }}
+            ${{ runner.temp }}/geldapp-wdio-e2e-logs
+          if-no-files-found: warn
+          retention-days: 14
