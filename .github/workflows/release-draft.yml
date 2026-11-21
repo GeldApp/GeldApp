@@ -242,7 +242,7 @@ jobs:
 
       - name: Update draft release
         if: ${{ steps.version.outputs.is_tagged != 'true' }}
-        uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+        uses: release-drafter/release-drafter@d1a19e60e81a7e650d00a7de9277f87e439117ea # v7.11.0
         with:
           version: ${{ steps.version.outputs.version }}
           commitish: ${{ github.sha }}
@@ -412,7 +412,7 @@ jobs:
       - name: Publish guarded draft release
         if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && fromJSON(steps.main-head-before-publish.outputs.data).object.sha == github.sha && fromJSON(steps.created-tag.outputs.data).object.sha == github.sha }}
         id: published-release
-        uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+        uses: release-drafter/release-drafter@d1a19e60e81a7e650d00a7de9277f87e439117ea # v7.11.0
         with:
           version: ${{ steps.version.outputs.version }}
           commitish: ${{ github.sha }}
