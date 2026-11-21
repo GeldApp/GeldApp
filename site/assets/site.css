@@ -11,7 +11,7 @@
 
 .homebrew-panel{margin-top:32px;padding:34px;background:var(--blue);color:var(--white);border:1px solid rgba(18,59,115,.12);border-radius:6px;box-shadow:0 16px 36px rgba(20,34,48,.08)}
 .homebrew-panel-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);align-items:center;gap:38px}
-.homebrew-copy .eyebrow{margin-bottom:12px;color:#d9e4f2}
+.homebrew-copy .eyebrow{margin-bottom:12px;color:#d9e4f2;font-size:12px}
 .homebrew-copy h3{font:600 25px/1.2 var(--display);letter-spacing:-.7px;margin-bottom:14px}
 .homebrew-copy p:not(.eyebrow){font-size:16px;line-height:1.65;color:#d7e0ed;margin-bottom:14px}
 .homebrew-copy>a{display:inline-block;margin-top:2px;color:var(--gold);font-size:16px;font-weight:700}
