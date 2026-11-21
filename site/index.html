@@ -74,8 +74,23 @@
           <article class="feature-card"><div class="feature-number">01</div><div class="feature-icon blue-icon" aria-hidden="true">◷</div><h3>A useful monthly picture</h3><p>See account balances, recent activity, category spending, budgets, and cash flow together. The prototype works with manual accounts and entries.</p><a href="https://github.com/GeldApp/GeldApp/blob/main/README.md">How the prototype works <span aria-hidden="true">↗</span></a></article>
           <article class="feature-card"><div class="feature-number">02</div><div class="feature-icon gold-icon" aria-hidden="true">↕</div><h3>Room for real life</h3><p>Bring transactions in through CSV, find them with filters, and add notes or categories. The current model is simple and EUR-only.</p><a href="https://github.com/GeldApp/GeldApp/blob/main/TODO.md">See the product backlog <span aria-hidden="true">↗</span></a></article>
           <article class="feature-card"><div class="feature-number">03</div><div class="feature-icon ink-icon" aria-hidden="true">⌑</div><h3>Local-first direction</h3><p>The native desktop vault encrypts the ledger at rest and supports passphrase recovery. The browser preview still uses plaintext storage. Use sample data only.</p><a href="https://github.com/GeldApp/GeldApp/blob/main/docs/architecture.md">Read the architecture notes <span aria-hidden="true">↗</span></a></article>
-          <article class="feature-card"><div class="feature-number">04</div><div class="feature-icon blue-icon" aria-hidden="true">↓</div><h3>Try the macOS preview</h3><p>After the first guarded release is published and its Homebrew cask has merged, install the universal preview:</p><p class="install-command"><code>brew install --cask geldapp/tap/geldapp</code></p><p>Upgrade with <code>brew upgrade --cask geldapp</code>. Remove it with <code>brew uninstall --cask geldapp</code>; your local vault stays in place.</p><p>Ad-hoc signed, without a Developer ID signature or notarization. Gatekeeper may require you to approve the first launch.</p><a href="https://github.com/GeldApp/GeldApp/releases">Check published releases <span aria-hidden="true">↗</span></a></article>
         </div>
+        <aside class="homebrew-panel" aria-labelledby="homebrew-title">
+          <div class="homebrew-panel-grid">
+            <div class="homebrew-copy">
+              <p class="eyebrow">MACOS PREVIEW</p>
+              <h3 id="homebrew-title">Try GeldApp with Homebrew</h3>
+              <p>After the first guarded release is published and its cask update has merged, install the universal preview with these commands.</p>
+              <p>The preview is ad-hoc signed and unnotarized, without an Apple Developer ID signature. macOS may ask you to approve the first launch. Uninstalling removes the app and preserves your local vault. Use sample data only.</p>
+              <a href="https://github.com/GeldApp/GeldApp/releases">Check published releases <span aria-hidden="true">↗</span></a>
+            </div>
+            <div class="homebrew-commands" aria-label="Homebrew commands">
+              <div class="homebrew-command"><span>Install</span><code>brew install --cask geldapp/tap/geldapp</code></div>
+              <div class="homebrew-command"><span>Upgrade</span><code>brew upgrade --cask geldapp</code></div>
+              <div class="homebrew-command"><span>Uninstall</span><code>brew uninstall --cask geldapp</code></div>
+            </div>
+          </div>
+        </aside>
       </section>
 
       <section class="readiness" id="readiness">
