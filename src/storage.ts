@@ -2,11 +2,12 @@ import { isTauri, invoke } from '@tauri-apps/api/core';
 import { validateLedger, type Ledger } from './domain';
 
 const key='geldapp.ledger.v1';
-export type VaultStatus={vault_exists:boolean;unlocked:boolean;legacy_files:string[];biometric_enabled:boolean;biometric_available:boolean;biometric_supported:boolean;previous_vault_exists:boolean;browser_preview?:boolean};
+export type BiometricSigningEntitlements={application_identifier:boolean;keychain_access_groups:boolean;application_groups:boolean};
+export type VaultStatus={vault_exists:boolean;unlocked:boolean;legacy_files:string[];biometric_enabled:boolean;biometric_available:boolean;biometric_supported:boolean;biometric_signing_entitlements:BiometricSigningEntitlements|null;previous_vault_exists:boolean;browser_preview?:boolean};
 
 export async function getVaultStatus():Promise<VaultStatus> {
   if(isTauri()) return invoke<VaultStatus>('vault_status');
-  return {vault_exists:!!localStorage.getItem(key),unlocked:true,legacy_files:[],biometric_enabled:false,biometric_available:false,biometric_supported:false,previous_vault_exists:false,browser_preview:true};
+  return {vault_exists:!!localStorage.getItem(key),unlocked:true,legacy_files:[],biometric_enabled:false,biometric_available:false,biometric_supported:false,biometric_signing_entitlements:null,previous_vault_exists:false,browser_preview:true};
 }
 export async function loadLedger():Promise<Ledger|null> {
   const raw = isTauri() ? await invoke<string|null>('load_ledger') : localStorage.getItem(key);

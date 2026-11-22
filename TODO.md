@@ -14,7 +14,7 @@ Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with
 - [x] IBAN checksum validation and payment drafts; **no payment execution**.
 - [x] Passphrase-encrypted backup/restore, separate from the active ledger.
 - [x] macOS development bundle builds and launches; limited native persistence verified.
-- [ ] Windows native build and runtime verification; code portability alone is insufficient.
+- [ ] Windows native build and runtime verification; code portability alone is insufficient. An isolated compiled-app smoke now covers create, save, lock, competing-process exclusion, restart, wrong-passphrase rejection, reopen, and previous-snapshot recovery in macOS and Windows CI. Local macOS runtime passed; hosted Windows execution is pending.
 
 ## P0 — Trustworthy local foundation
 
@@ -22,7 +22,7 @@ Reference: [MoneyMoney security](https://moneymoney.app/security/). These are Ge
 
 - [x] **SEC-01 · Implemented; prototype reviewed** — Active native ledger uses versioned AES-256-GCM encryption, Argon2id-wrapped random keys, durable snapshots and corruption detection. Browser preview remains unencrypted. macOS/Windows runtime data-path validation is still required.
 - [x] **SEC-02 · Implemented; prototype reviewed** — Native create/unlock/lock/recovery flows; wrong-key, tamper, schema, migration, locking and save-before-lock tests. Vault keys stay in native memory and are zeroized on lock.
-- [ ] **SEC-03 · Partial** — Optional macOS Keychain item protects the vault key with current-biometry access control. No bank-provider passwords exist or are stored yet; a separate credential boundary is future work. Signed app entitlement and real Keychain behavior need device validation.
+- [ ] **SEC-03 · Partial** — Optional macOS Data Protection Keychain item protects the actual vault key with current-biometry access control; passphrase remains available. A read-only effective-signature diagnostic and isolated unique-namespace interactive harness are prepared. A declared default access group is only a signing prerequisite; real Keychain behavior, enrollment invalidation, and physical Touch ID still need device validation. See `docs/biometry-validation.md`.
 - [ ] **SEC-04 · Partial** — Startup Touch ID uses native access control on the actual vault key; cancel/unavailable/enrollment changes fail closed and passphrase recovery remains. Physical Touch ID and signed-app testing remain outstanding.
 - [ ] **SEC-05** — Auto-lock after idle, sleep and OS session lock; clear decrypted frontend state and native key material. Test outstanding saves during lock.
 - [x] **SEC-06 · Implemented; prototype reviewed** — Explicit migration validates the full ledger and encrypts the selected legacy snapshot; `ledger.json`, `ledger.previous.json` and `ledger.next.json` remain untouched for manual review/cleanup. Authenticated prior-vault recovery preserves damaged evidence. Copies in backups cannot be erased remotely.
