@@ -9,3 +9,11 @@
 - Browser smoke on the identical frontend/toolchain verified navigation and synthetic encrypted backup/restore; macOS Tauri compilation passed. No real Keychain, fingerprint or Windows runtime validation is claimed.
 - The approved aggregate at `46554675ba38f54d89ac8492583d0c8a07a7181c` passed hosted macOS, Windows, frontend, commit-policy and CodeQL checks, with no CodeQL alerts. A later platform-floor follow-up explicitly targets Safari 16.4/Chromium 111 and declares macOS 13.3; this follow-up still needs exact-SHA Terra review and fresh hosted checks, including CodeQL. No runtime claim is inferred from compilation.
 - Root added this record and corrected the general TODO source-baseline date only after source approval. Dependency maintenance is dated separately from the unchanged MoneyMoney parity source baseline.
+
+## Platform floor follow-up
+
+- Earlier head `46554675ba38f54d89ac8492583d0c8a07a7181c` passed every hosted check, including both native platforms and CodeQL, with no open PR scanning alerts. Approval was then withheld for its macOS declaration mismatch.
+- Reviewed follow-up: `b4338a956a21b50dd2bc39d5f796ea5d1b51818b`. Independent Terra verdict: APPROVE.
+- Explicit production JavaScript/CSS targets Safari 16.4 and Chrome/Edge 111 now align with declared macOS 13.3 bundle and Objective-C deployment floors. Requirements document current API inventory and distinguish build targets from actual oldest-OS runtime verification.
+- Reviewer independently passed frontend build, 11 tests and lint. Worker passed formatting, locked native compilation and macOS Tauri debug compilation. No new native cryptographic logic changes.
+- This follow-up requires all hosted checks and CodeQL on the final published head before squash merge. Oldest-version WebKit, physical biometry and Windows runtime behavior remain unverified.
