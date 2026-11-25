@@ -16,9 +16,9 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 argon2 = "0.6"
-rand = "0.8"
+getrandom = "0.4"
 zeroize = { version = "1", features = ["derive"] }
 base64 = "0.23"
 fs2 = "0.4"
