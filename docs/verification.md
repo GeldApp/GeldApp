@@ -7,6 +7,7 @@
 - The Windows requirement is an Evergreen WebView2 runtime at Chromium 111 or newer. Tauri's default installer bootstraps a missing runtime; a pinned/offline runtime may not update. Windows runtime behavior has not been tested.
 - Source API/CSS inventory: `String.replaceAll`, `Array.prototype.at`, Web Crypto, `TextEncoder`/`TextDecoder`, `:focus-visible`, `backdrop-filter`, and `100dvh`; no source use found of `:has()`, container queries, subgrid, `color-mix()`, or newer Lab/Oklch color functions. Vite targets syntax and CSS minification only; it does not supply API polyfills. This inventory and successful builds do not establish runtime behavior on the declared minimum device.
 - The aggregate at `46554675ba38f54d89ac8492583d0c8a07a7181c` passed its hosted required checks, including CodeQL. This later platform-floor follow-up needs its own exact-SHA review and hosted scan.
+- After the toolchain and platform-floor merge, the isolated debug native E2E app rebuilt and passed setup, restart, and previous-snapshot recovery on the current macOS host. It used only synthetic test data in `/private/tmp/geldapp-e2e-1795640369-31750`; the `e2e` feature excludes every Keychain provider call. This does not verify macOS 13.3 specifically, real Keychain access, biometric prompts, or Windows.
 
 ## Encrypted vault branch verification
 

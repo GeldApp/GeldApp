@@ -19,6 +19,8 @@ Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS in
 
 After the first guarded GitHub release is published and its cask update has merged, install with Homebrew:
 
+GeldApp requires macOS 13.3 or newer. Homebrew can check only the Ventura major-version minimum; its cask cannot block macOS 13.0 through 13.2, but the app bundle's 13.3 minimum prevents those systems from launching it.
+
 ```sh
 brew install --cask geldapp/tap/geldapp
 brew upgrade --cask geldapp
