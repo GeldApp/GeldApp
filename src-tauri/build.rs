@@ -7,7 +7,7 @@ fn main() {
         let out = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR"));
         let library = out.join("libgeld_keychain.a");
         let arch = env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
-        let deployment = if arch == "aarch64" { "11.0" } else { "10.15" };
+        let deployment = "13.3";
         let arch = if arch == "aarch64" {
             "arm64"
         } else {
