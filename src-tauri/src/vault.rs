@@ -5,7 +5,6 @@ use aes_gcm::{
 use argon2::{Algorithm, Argon2, Params, Version};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use fs2::FileExt;
-use rand::{rngs::SysRng, TryRng};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -204,7 +203,10 @@ impl VaultSession {
             directory,
             passphrase,
             delete_biometric_key,
-            fill_random,
+            |bytes| {
+                getrandom::fill(bytes)
+                    .map_err(|_| "Could not generate secure random vault material".to_string())
+            },
         )
     }
 
@@ -522,16 +524,10 @@ fn valid_date(value: &str) -> bool {
     day >= 1 && day <= days
 }
 
-fn fill_random(bytes: &mut [u8]) -> Result<(), String> {
-    SysRng
-        .try_fill_bytes(bytes)
-        .map_err(|_| "Could not generate secure random vault material".to_string())?;
-    Ok(())
-}
-
 fn random_key() -> Result<Zeroizing<[u8; 32]>, String> {
     let mut key = Zeroizing::new([0; 32]);
-    fill_random(key.as_mut())?;
+    getrandom::fill(key.as_mut())
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     Ok(key)
 }
 
@@ -578,9 +574,11 @@ fn create_envelope(
     biometric_enabled: bool,
 ) -> Result<VaultFile, String> {
     let mut salt = [0; 16];
-    fill_random(&mut salt)?;
+    getrandom::fill(&mut salt)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let mut key_nonce = [0; 12];
-    fill_random(&mut key_nonce)?;
+    getrandom::fill(&mut key_nonce)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let wrapping_key = derive_key(passphrase, &salt)?;
     let wrapped_key = encrypt(&wrapping_key, &key_nonce, key, KEY_AAD)?;
     let mut envelope = VaultFile {
@@ -620,7 +618,8 @@ fn unwrap_key(passphrase: &str, envelope: &VaultFile) -> Result<Zeroizing<[u8; 3
 
 fn encrypt_data(key: &[u8; 32], data: &[u8], envelope: &mut VaultFile) -> Result<(), String> {
     let mut nonce = [0; 12];
-    fill_random(&mut nonce)?;
+    getrandom::fill(&mut nonce)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let ciphertext = encrypt(key, &nonce, data, DATA_AAD)?;
     envelope.data_nonce = B64.encode(nonce);
     envelope.ciphertext = B64.encode(ciphertext);
