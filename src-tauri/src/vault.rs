@@ -200,6 +200,21 @@ impl VaultSession {
         passphrase: &str,
         delete_biometric_key: impl FnOnce() -> Result<(), String>,
     ) -> Result<(), String> {
+        self.recover_previous_with_cleanup_and_entropy(
+            directory,
+            passphrase,
+            delete_biometric_key,
+            fill_random,
+        )
+    }
+
+    fn recover_previous_with_cleanup_and_entropy(
+        &self,
+        directory: &Path,
+        passphrase: &str,
+        delete_biometric_key: impl FnOnce() -> Result<(), String>,
+        fill_rejected_id: impl FnOnce(&mut [u8]) -> Result<(), String>,
+    ) -> Result<(), String> {
         let _operation = self
             .operation
             .lock()
@@ -218,14 +233,15 @@ impl VaultSession {
         validate_data(
             std::str::from_utf8(&data).map_err(|_| "Previous vault data is invalid".to_string())?,
         )?;
+        // Obtain every fallible local prerequisite before deleting the biometric key.
+        let mut rejected_id_bytes = [0; 8];
+        fill_rejected_id(&mut rejected_id_bytes)?;
+        let rejected_id = u64::from_le_bytes(rejected_id_bytes);
         let biometric_cleanup_needed = delete_biometric_key().is_err();
         // If Keychain refused removal, keep the recovery screen's opt-out visible
         // so the user can retry cleanup from Settings after unlocking by passphrase.
         envelope.biometric_enabled = biometric_cleanup_needed;
         let current = vault_path(directory);
-        let mut rejected_id_bytes = [0; 8];
-        fill_random(&mut rejected_id_bytes)?;
-        let rejected_id = u64::from_le_bytes(rejected_id_bytes);
         let rejected = directory.join(format!("vault.rejected-{rejected_id}.enc"));
         let recovery_next = directory.join("vault.recovery.next.enc");
         write_exact_atomic_stage(
@@ -1001,6 +1017,62 @@ mod tests {
             .unwrap();
 
         assert!(session.status(directory.path()).unwrap().biometric_enabled);
+    }
+
+    #[test]
+    fn recovery_entropy_failure_preserves_vault_files_and_skips_biometric_cleanup() {
+        let directory = tempfile::tempdir().unwrap();
+        let session = VaultSession::new();
+        session.setup(directory.path(), PASS, LEDGER).unwrap();
+        let mut envelope: VaultFile =
+            serde_json::from_slice(&fs::read(vault_path(directory.path())).unwrap()).unwrap();
+        envelope.biometric_enabled = true;
+        fs::write(
+            vault_path(directory.path()),
+            serde_json::to_vec(&envelope).unwrap(),
+        )
+        .unwrap();
+        session.save(directory.path(), LEDGER).unwrap();
+        session.lock().unwrap();
+        fs::write(vault_path(directory.path()), b"damaged current vault").unwrap();
+        let before: std::collections::BTreeMap<_, _> = fs::read_dir(directory.path())
+            .unwrap()
+            .map(|entry| {
+                let path = entry.unwrap().path();
+                (
+                    path.file_name().unwrap().to_owned(),
+                    fs::read(path).unwrap(),
+                )
+            })
+            .collect();
+
+        let mut cleanup_called = false;
+        let error = session
+            .recover_previous_with_cleanup_and_entropy(
+                directory.path(),
+                PASS,
+                || {
+                    cleanup_called = true;
+                    Ok(())
+                },
+                |_| Err("injected entropy failure".into()),
+            )
+            .unwrap_err();
+
+        assert!(error.contains("injected entropy failure"));
+        assert!(!cleanup_called);
+        let after: std::collections::BTreeMap<_, _> = fs::read_dir(directory.path())
+            .unwrap()
+            .map(|entry| {
+                let path = entry.unwrap().path();
+                (
+                    path.file_name().unwrap().to_owned(),
+                    fs::read(path).unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(after, before);
+        assert!(!session.status(directory.path()).unwrap().unlocked);
     }
 
     #[test]
