@@ -172,16 +172,31 @@ async fn set_vault_biometric(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(feature = "e2e")]
+    eprintln!("GELDAPP_E2E phase=run-entry");
+
     let builder = tauri::Builder::default();
     #[cfg(feature = "e2e")]
     let builder = builder
         .plugin(tauri_plugin_wdio::init())
         .plugin(tauri_plugin_wdio_webdriver::init());
 
-    builder
+    #[cfg(feature = "e2e")]
+    eprintln!("GELDAPP_E2E phase=webdriver-plugins-registered");
+
+    let app = builder
         .setup(|app| {
+            #[cfg(feature = "e2e")]
+            eprintln!("GELDAPP_E2E phase=app-setup-entry");
+
             let directory = data_directory(app.handle()).map_err(std::io::Error::other)?;
+            #[cfg(feature = "e2e")]
+            eprintln!("GELDAPP_E2E phase=fixture-directory-accepted");
+
             let session = VaultSession::open(&directory).map_err(std::io::Error::other)?;
+            #[cfg(feature = "e2e")]
+            eprintln!("GELDAPP_E2E phase=vault-session-open");
+
             app.manage(VaultState(Arc::new(session)));
             Ok(())
         })
@@ -196,7 +211,14 @@ pub fn run() {
             load_ledger,
             save_ledger,
             set_vault_biometric,
-        ])
-        .run(tauri::generate_context!())
+        ]);
+
+    #[cfg(feature = "e2e")]
+    eprintln!("GELDAPP_E2E phase=event-loop-start");
+
+    app.run(tauri::generate_context!())
         .expect("Could not start GeldApp");
+
+    #[cfg(feature = "e2e")]
+    eprintln!("GELDAPP_E2E phase=app-exited");
 }
