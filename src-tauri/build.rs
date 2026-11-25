@@ -3,6 +3,10 @@ use std::{env, path::PathBuf, process::Command};
 fn main() {
     tauri_build::build();
     println!("cargo:rerun-if-changed=src/keychain.m");
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_E2E");
+    if env::var_os("CARGO_FEATURE_E2E").is_some() {
+        return;
+    }
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         let out = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR"));
         let library = out.join("libgeld_keychain.a");

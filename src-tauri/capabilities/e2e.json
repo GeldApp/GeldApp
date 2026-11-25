@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "e2e",
+  "description": "Local native vault smoke-test WebDriver listener, enabled only by the debug e2e build feature.",
+  "windows": ["main"],
+  "permissions": ["core:default", "wdio:default", "wdio-webdriver:default"]
+}

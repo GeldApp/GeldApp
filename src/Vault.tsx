@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Fingerprint, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { demoLedger } from './demo';
 import { migrateLegacyVault, recoverPreviousVault, setupVault, unlockBiometric, unlockVault, type VaultStatus } from './storage';
+import { defaultDataProtectionGroupDeclared } from './biometric-status';
 import './vault.css';
 
 export function VaultGate({status,onUnlocked}:{status:VaultStatus;onUnlocked:()=>Promise<void>}) {
@@ -48,7 +49,7 @@ export function VaultGate({status,onUnlocked}:{status:VaultStatus;onUnlocked:()=
    <button className="button primary full-width" disabled={busy}>{busy?'Securing…':initial?(status.legacy_files.length?'Encrypt selected snapshot':'Create encrypted vault'):'Unlock vault'} <ShieldCheck size={17}/></button>
   </form>
   {!initial&&status.biometric_enabled&&status.biometric_available&&<button className="button secondary full-width vault-biometric" disabled={busy} onClick={biometric}><Fingerprint size={18}/> Unlock with Touch ID</button>}
-  {!initial&&status.biometric_enabled&&!status.biometric_available&&<p className="muted">Biometric unlocking is unavailable right now. Use your passphrase.</p>}
+  {!initial&&status.biometric_enabled&&!status.biometric_available&&<p className="muted">{defaultDataProtectionGroupDeclared(status.biometric_signing_entitlements)===false?'This signed build does not expose a default Data Protection Keychain access group. Use your passphrase.':'Biometric unlocking is unavailable right now. Use your passphrase.'}</p>}
   {!initial&&status.previous_vault_exists&&<div className="vault-recovery"><strong>Previous encrypted snapshot available</strong><small>Recovery rolls back to the last encrypted save. The current file is preserved separately, and the previous copy remains unchanged.</small><label className="checkbox-field"><input type="checkbox" checked={confirmRecovery} onChange={e=>setConfirmRecovery(e.target.checked)}/>I understand this restores the prior snapshot.</label><button type="button" className="button secondary full-width" disabled={busy||!confirmRecovery||!passphrase} onClick={recover}>Recover previous snapshot</button></div>}
   {initial&&status.legacy_files.length===0&&<small className="muted">A small sample ledger is added so you can explore the app. Replace it with your own data when ready.</small>}
  </section></main>;

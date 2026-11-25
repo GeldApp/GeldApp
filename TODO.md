@@ -15,7 +15,7 @@ Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with
 - [x] Passphrase-encrypted backup/restore, separate from the active ledger.
 - [x] **DEP-01 · Implemented; aggregate reviewed and hosted checks passed 2026-11-25** — Current toolchain: TypeScript 7.0.2, Vite 8.3.8 and `@vitejs/plugin-react` 6.3.0; native crypto crates: `aes-gcm` 0.11 and direct `getrandom` 0.4.3 calls (the rand 0.10 PR was superseded). Vault envelope v1 remains compatible with the checked-in AES-GCM 0.10 fixture; injected entropy-failure regression verifies recovery leaves vault files intact. Aggregate SHA `46554675` passed hosted required checks, including CodeQL; the follow-up macOS 13.3 / Safari 16.4 and Windows WebView2 Chromium 111 floor needs fresh exact-SHA review and hosted checks. Native biometric behavior and oldest supported OS runtime remain unverified.
 - [x] macOS development bundle builds and launches; limited native persistence verified.
-- [ ] Windows native build and runtime verification; code portability alone is insufficient.
+- [ ] Windows native build and runtime verification; code portability alone is insufficient. An isolated compiled-app smoke now covers create, save, lock, competing-process exclusion, restart, wrong-passphrase rejection, reopen, and previous-snapshot recovery in macOS and Windows CI. Local macOS runtime passed; hosted Windows execution is pending.
 
 ## P0 — Trustworthy local foundation
 
@@ -23,14 +23,14 @@ Reference: [MoneyMoney security](https://moneymoney.app/security/). These are Ge
 
 - [x] **SEC-01 · Implemented; prototype reviewed** — Active native ledger uses versioned AES-256-GCM encryption, Argon2id-wrapped random keys, durable snapshots and corruption detection. Browser preview remains unencrypted. macOS/Windows runtime data-path validation is still required.
 - [x] **SEC-02 · Implemented; prototype reviewed** — Native create/unlock/lock/recovery flows; wrong-key, tamper, schema, migration, locking and save-before-lock tests. Vault keys stay in native memory and are zeroized on lock.
-- [ ] **SEC-03 · Partial** — Optional macOS Keychain item protects the vault key with current-biometry access control. No bank-provider passwords exist or are stored yet; a separate credential boundary is future work. Signed app entitlement and real Keychain behavior need device validation.
+- [ ] **SEC-03 · Partial** — Optional macOS Data Protection Keychain item protects the actual vault key with current-biometry access control; passphrase remains available. A read-only effective-signature diagnostic and isolated unique-namespace interactive harness are prepared. A declared default access group is only a signing prerequisite; real Keychain behavior, enrollment invalidation, and physical Touch ID still need device validation. See `docs/biometry-validation.md`.
 - [ ] **SEC-04 · Partial** — Startup Touch ID uses native access control on the actual vault key; cancel/unavailable/enrollment changes fail closed and passphrase recovery remains. Physical Touch ID and signed-app testing remain outstanding.
 - [ ] **SEC-05** — Auto-lock after idle, sleep and OS session lock; clear decrypted frontend state and native key material. Test outstanding saves during lock.
 - [x] **SEC-06 · Implemented; prototype reviewed** — Explicit migration validates the full ledger and encrypts the selected legacy snapshot; `ledger.json`, `ledger.previous.json` and `ledger.next.json` remain untouched for manual review/cleanup. Authenticated prior-vault recovery preserves damaged evidence. Copies in backups cannot be erased remotely.
 - [ ] **SEC-07** — Windows credential protection and optional Windows Hello, with equivalent recovery semantics and platform tests.
 - [ ] **SEC-08** — Safe exports: neutralize spreadsheet formulas in merchant/note cells while preserving signed numeric amounts. Untrusted-file size/schema limits and migration tests.
-- [ ] **REL-01** — Signed/notarized macOS distribution, signed Windows installer, verified updates and rollback policy.
-- [ ] **REL-02 · Partial** — Baseline frontend/Rust checks and native compilation passed GitHub CI on macOS and Windows ([run](https://github.com/GeldApp/GeldApp/actions/runs/43739038652)). Expanded lint, CodeQL, Conventional Commit and draft-release workflows are in progress; this run predates the vault implementation. Keep financial fixtures synthetic.
+- [ ] **REL-01 · Partial** — Guarded universal macOS preview DMG and exact-hash Homebrew cask automation are configured. The preview is ad-hoc signed/unnotarized with no Apple Developer ID signature; signed/notarized macOS and Windows installers, verified updates, and rollback policy remain outstanding. No installable release asset has been published yet.
+- [ ] **REL-02 · Partial** — Baseline frontend/Rust checks and native compilation passed GitHub CI on macOS and Windows ([run](https://github.com/GeldApp/GeldApp/actions/runs/43739038652)). Expanded lint, CodeQL, Conventional Commit and draft-release workflows are configured; the guarded macOS packaging and first manual publication are not yet verified. This run predates the vault implementation. Keep financial fixtures synthetic.
 
 Release gate: encrypted storage and recovery verified, critical/high review findings closed, platform-specific claims backed by actual execution.
 

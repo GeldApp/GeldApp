@@ -13,7 +13,29 @@ npm test
 npm run tauri build
 ```
 
-Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS installers on macOS; build Windows installers on Windows. Desktop signing and release distribution are not configured.
+Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS installers on macOS; build Windows installers on Windows. Guarded releases build a universal macOS preview DMG for Apple Silicon and Intel. The preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature; no Apple Developer signing identity is configured.
+
+## Install the macOS preview
+
+After the first guarded GitHub release is published and its cask update has merged, install with Homebrew:
+
+GeldApp requires macOS 13.3 or newer. Homebrew can check only the Ventura major-version minimum; its cask cannot block macOS 13.0 through 13.2, but the app bundle's 13.3 minimum prevents those systems from launching it.
+
+```sh
+brew install --cask geldapp/tap/geldapp
+brew upgrade --cask geldapp
+brew uninstall --cask geldapp
+```
+
+Uninstall removes the app and leaves the local financial vault in place. The DMG and its SHA-256 checksum are attached to each versioned [GitHub release](https://github.com/GeldApp/GeldApp/releases). Because the preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature, macOS Gatekeeper may show a warning on first launch; Homebrew does not remove quarantine. If macOS blocks the app, use Finder's Control-click > Open flow and review the prompt. See [release and recovery details](docs/releases.md).
+
+## Desktop runtime requirements
+
+- macOS 13.3 or newer. The app declares this minimum in Tauri and builds its Objective-C Keychain bridge for the same deployment floor. Safari 16.4 is the web-platform baseline used for production JavaScript and CSS output. This minimum physical OS has not yet been tested.
+- Windows requires Microsoft Edge WebView2 Evergreen with Chromium 111 or newer. Tauri's default installer can bootstrap a missing runtime; a network connection is needed for that download. Admin-pinned or offline runtimes can remain older than the required baseline. No Windows runtime validation is claimed.
+- Vite targets Safari 16.4 and Chromium 111 for both JavaScript syntax and CSS. This does not polyfill browser APIs. The current source uses standard APIs including `String.replaceAll`, `Array.prototype.at`, Web Crypto, `TextEncoder`/`TextDecoder`, and CSS `:focus-visible`, `backdrop-filter`, and `100dvh`; runtime behavior on the oldest supported OS/device remains unverified.
+
+References: [Apple Safari 16.4 release notes](https://developer.apple.com/documentation/safari-release-notes/safari-16_4-release-notes), [Tauri WebView versions](https://v2.tauri.app/reference/webview-versions/), [Tauri Windows WebView2 setup](https://v2.tauri.app/start/prerequisites/#windows), [Vite build options](https://vite.dev/config/build-options.html).
 
 ## Desktop runtime requirements
 
@@ -39,7 +61,7 @@ References: [Apple Safari 16.4 release notes](https://developer.apple.com/docume
 
 ## Prototype boundaries
 
-Starts with illustrative demo data, not real financial data. Keep using sample data until a signed macOS build and Keychain/Touch ID behavior have been verified, the migration copies have been reviewed, and the security review is complete. The Objective-C Security/LocalAuthentication bridge builds for the selected macOS architecture. A suitable signed app identity and entitlements are required for Data Protection Keychain access; the local development identity and physical Touch ID prompts have not been verified. Windows biometric unlock is not implemented or tested.
+Starts with illustrative demo data, not real financial data. Keep using sample data until a signed macOS build and Keychain/Touch ID behavior have been verified, the migration copies have been reviewed, and the security review is complete. The Objective-C Security/LocalAuthentication bridge builds for the selected macOS architecture. A suitable signed app identity and entitlements are required for Data Protection Keychain access; the released preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature, and physical Touch ID prompts have not been verified. Windows biometric unlock is not implemented or tested.
 
 The native ledger is encrypted at rest; the browser preview is not. Legacy JSON snapshots remain plaintext after migration until the user verifies the vault and removes them manually. There are no bank connections, provider-password storage, bank API, telemetry, backend, or cloud sync. Encrypted backups remain separate from active-storage encryption. Restore replaces the current workspace after an explicit checkbox. Category edits save immediately.
 

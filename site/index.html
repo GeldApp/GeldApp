@@ -33,7 +33,7 @@
             <a class="button button-gold" href="https://github.com/GeldApp/GeldApp">Explore the project <span aria-hidden="true">↗</span></a>
             <a class="text-link" href="#readiness">See what works <span aria-hidden="true">↓</span></a>
           </div>
-          <div class="hero-note"><span class="note-rule"></span><span>Early prototype · Sample data only · No release builds yet</span></div>
+          <div class="hero-note"><span class="note-rule"></span><span>Early prototype · Sample data only · Ad-hoc-signed preview when a release is published</span></div>
         </div>
 
         <div class="preview-wrap" aria-label="Illustrative GeldApp desktop interface preview">
@@ -75,11 +75,28 @@
           <article class="feature-card"><div class="feature-number">02</div><div class="feature-icon gold-icon" aria-hidden="true">↕</div><h3>Room for real life</h3><p>Bring transactions in through CSV, find them with filters, and add notes or categories. The current model is simple and EUR-only.</p><a href="https://github.com/GeldApp/GeldApp/blob/main/TODO.md">See the product backlog <span aria-hidden="true">↗</span></a></article>
           <article class="feature-card"><div class="feature-number">03</div><div class="feature-icon ink-icon" aria-hidden="true">⌑</div><h3>Local-first direction</h3><p>The native desktop vault encrypts the ledger at rest and supports passphrase recovery. The browser preview still uses plaintext storage. Use sample data only.</p><a href="https://github.com/GeldApp/GeldApp/blob/main/docs/architecture.md">Read the architecture notes <span aria-hidden="true">↗</span></a></article>
         </div>
+        <aside class="homebrew-panel" aria-labelledby="homebrew-title">
+          <div class="homebrew-panel-grid">
+            <div class="homebrew-copy">
+              <p class="eyebrow">MACOS PREVIEW</p>
+              <h3 id="homebrew-title">Try GeldApp with Homebrew</h3>
+              <p>After the first guarded release is published and its cask update has merged, install the universal preview with these commands.</p>
+              <p>Requires macOS 13.3 or later. The cask checks Ventura (macOS 13); the app bundle's 13.3 minimum prevents launch on macOS 13.0 through 13.2.</p>
+              <p>The preview is ad-hoc signed and unnotarized, without an Apple Developer ID signature. macOS may ask you to approve the first launch. Uninstalling removes the app and preserves your local vault. Use sample data only.</p>
+              <a href="https://github.com/GeldApp/GeldApp/releases">Check published releases</a>
+            </div>
+            <div class="homebrew-commands" aria-label="Homebrew commands">
+              <div class="homebrew-command"><span>Install</span><code>brew install --cask geldapp/tap/geldapp</code></div>
+              <div class="homebrew-command"><span>Upgrade</span><code>brew upgrade --cask geldapp</code></div>
+              <div class="homebrew-command"><span>Uninstall</span><code>brew uninstall --cask geldapp</code></div>
+            </div>
+          </div>
+        </aside>
       </section>
 
       <section class="readiness" id="readiness">
         <div class="readiness-inner"><div class="readiness-copy"><p class="eyebrow">HONEST ABOUT THE BUILD</p><h2>Useful prototype.<br /><em>Early product.</em></h2><p>The native desktop vault now encrypts the active ledger at rest with passphrase recovery. The browser preview still stores data unencrypted. GeldApp remains a prototype; use sample data only.</p><a class="button button-light" href="https://github.com/GeldApp/GeldApp/blob/main/docs/verification.md">Read verification notes <span aria-hidden="true">↗</span></a></div>
-          <div class="readiness-list"><div class="readiness-row"><span class="check-mark">✓</span><div><b>Working today</b><span>Manual accounts and entries, search and filters, category budgets, CSV import/export, native encrypted storage, encrypted backup files, and payment drafts.</span></div><span class="state state-built">IN PROTOTYPE</span></div><div class="readiness-row"><span class="partial-mark">◐</span><div><b>Still being validated</b><span>Signed macOS build and Keychain behavior, physical Touch ID prompts, and Windows native vault behavior.</span></div><span class="state state-progress">IN PROGRESS</span></div><div class="readiness-row"><span class="planned-mark">○</span><div><b>On the roadmap</b><span>Bank connections, account synchronization, and actual payment submission.</span></div><span class="state state-planned">PLANNED</span></div><div class="readiness-footnote">Optional macOS Touch ID is implemented, but signed-app and physical-device behavior are unverified. Browser preview storage is plaintext. Signed releases and Windows runtime are not verified. Payment drafts do not authorize or send money.</div></div>
+          <div class="readiness-list"><div class="readiness-row"><span class="check-mark">✓</span><div><b>Working today</b><span>Manual accounts and entries, search and filters, category budgets, CSV import/export, native encrypted storage, encrypted backup files, and payment drafts.</span></div><span class="state state-built">IN PROTOTYPE</span></div><div class="readiness-row"><span class="partial-mark">◐</span><div><b>Still being validated</b><span>Signed macOS build and Keychain behavior, physical Touch ID prompts, and Windows native vault behavior.</span></div><span class="state state-progress">IN PROGRESS</span></div><div class="readiness-row"><span class="planned-mark">○</span><div><b>On the roadmap</b><span>Bank connections, account synchronization, and actual payment submission.</span></div><span class="state state-planned">PLANNED</span></div><div class="readiness-footnote">The macOS preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature; Homebrew preserves quarantine and macOS may require user approval. Optional macOS Touch ID is implemented, but signed-app and physical-device behavior are unverified. Browser preview storage is plaintext. Windows runtime is not verified. Payment drafts do not authorize or send money.</div></div>
         </div>
       </section>
 

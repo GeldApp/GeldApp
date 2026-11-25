@@ -5,13 +5,20 @@ on:
     branches: [main]
   schedule:
     - cron: '0 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      resume_draft:
+        description: Resume a draft after its immutable tag was already created
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
   checks: read
   security-events: read
 
-# Draft updates and scheduled publication share one writer lock.
+# Draft updates and scheduled/manual publication share one writer lock.
 concurrency:
   group: release-draft-main
   cancel-in-progress: false
@@ -19,8 +26,11 @@ concurrency:
 jobs:
   update:
     name: Update draft release
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'push' && 'ubuntu-latest' || 'macos-latest' }}
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     permissions:
       contents: write
       checks: read
@@ -44,8 +54,23 @@ jobs:
           search_commit_body: true
           enable_prerelease_mode: false
 
-      - name: Read current main head before weekly checks
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+      - name: Require a stable numeric release version
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+
+      - name: Stop tagged reruns unless draft recovery was requested
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.version.outputs.is_tagged == 'true' && !inputs.resume_draft }}
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          echo "v${RELEASE_VERSION} is already tagged. Re-dispatch on main with resume_draft enabled only if its release is still a draft." >&2
+          exit 1
+
+      - name: Read current main head before release checks
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         id: main-head-before-checks
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
@@ -56,12 +81,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Require scheduled SHA to remain current main
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-checks.outputs.data).object.sha != github.sha }}
+      - name: Require release SHA to remain current main
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && fromJSON(steps.main-head-before-checks.outputs.data).object.sha != github.sha }}
+        run: exit 1
+
+      - name: Require manual releases to use main
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
         run: exit 1
 
       - name: Wait for Frontend check on this main commit
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
         with:
           ref: ${{ github.sha }}
@@ -74,7 +103,7 @@ jobs:
           wait-for-duplicates: true
 
       - name: Wait for Native (macOS) check on this main commit
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
         with:
           ref: ${{ github.sha }}
@@ -87,7 +116,7 @@ jobs:
           wait-for-duplicates: true
 
       - name: Wait for Native (Windows) check on this main commit
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
         with:
           ref: ${{ github.sha }}
@@ -100,7 +129,7 @@ jobs:
           wait-for-duplicates: true
 
       - name: Wait for CodeQL JavaScript/TypeScript analysis on this main commit
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
         with:
           ref: ${{ github.sha }}
@@ -113,7 +142,7 @@ jobs:
           wait-for-duplicates: true
 
       - name: Wait for CodeQL Rust analysis on this main commit
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
         with:
           ref: ${{ github.sha }}
@@ -126,7 +155,7 @@ jobs:
           wait-for-duplicates: true
 
       - name: Fetch CodeQL analyses for main
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         id: codeql-analyses
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
@@ -141,7 +170,7 @@ jobs:
 
       - name: Require CodeQL analyses on this exact main commit
         if: >-
-          ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && (
+          ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && (
             fromJSON(steps.codeql-analyses.outputs.data)[0].commit_sha != github.sha ||
             fromJSON(steps.codeql-analyses.outputs.data)[1].commit_sha != github.sha ||
             fromJSON(steps.codeql-analyses.outputs.data)[0].ref != 'refs/heads/main' ||
@@ -156,7 +185,7 @@ jobs:
         run: exit 1
 
       - name: Fetch critical CodeQL alerts for main
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         id: codeql-critical
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
@@ -172,11 +201,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Reject critical CodeQL alerts
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && steps.codeql-critical.outputs.data != '[]' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && steps.codeql-critical.outputs.data != '[]' }}
         run: exit 1
 
       - name: Fetch high CodeQL alerts for main
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         id: codeql-high
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
@@ -192,11 +221,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Reject high CodeQL alerts
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && steps.codeql-high.outputs.data != '[]' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && steps.codeql-high.outputs.data != '[]' }}
         run: exit 1
 
       - name: Recheck main head before updating the draft
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         id: main-head-before-draft
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
@@ -208,7 +237,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Require main to stay on the checked SHA
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-draft.outputs.data).object.sha != github.sha }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && fromJSON(steps.main-head-before-draft.outputs.data).object.sha != github.sha }}
         run: exit 1
 
       - name: Update draft release
@@ -221,8 +250,107 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Node.js for the macOS release bundle
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Set up Rust for the universal macOS release bundle
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Install frontend dependencies
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        run: npm ci
+
+      - name: Match bundled application version to the release tag
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          npm version "$RELEASE_VERSION" --no-git-tag-version --ignore-scripts
+          sed -i '' -E "s/^version = \"[^\"]+\"/version = \"$RELEASE_VERSION\"/" src-tauri/Cargo.toml
+          jq --arg version "$RELEASE_VERSION" \
+            '.version = $version' \
+            src-tauri/tauri.conf.json > "$RUNNER_TEMP/tauri.conf.json"
+          mv "$RUNNER_TEMP/tauri.conf.json" src-tauri/tauri.conf.json
+
+      - name: Build a universal macOS DMG with an ad-hoc signature
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        run: npm run tauri -- build --ci --target universal-apple-darwin --bundles dmg
+
+      - name: Verify the version, architectures, and bundle icon in the DMG
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        id: verified-bundle
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dmg_file="$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print)"
+          test -n "$dmg_file"
+          test "$(printf '%s\n' "$dmg_file" | wc -l | tr -d ' ')" -eq 1
+          mount_point="$RUNNER_TEMP/geldapp-dmg"
+          mkdir -p "$mount_point"
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount_point" "$dmg_file"
+          trap 'hdiutil detach "$mount_point" >/dev/null' EXIT
+
+          app="$mount_point/GeldApp.app"
+          binary="$app/Contents/MacOS/geldapp"
+          info="$app/Contents/Info.plist"
+          test -f "$binary"
+          actual_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info")"
+          test "$actual_version" = "$RELEASE_VERSION"
+          icon="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$info")"
+          test -s "$app/Contents/Resources/$icon"
+          lipo -verify_arch arm64 "$binary"
+          lipo -verify_arch x86_64 "$binary"
+
+          signature="$(codesign -dv --verbose=2 "$app" 2>&1)"
+          grep -q '^Signature=adhoc$' <<< "$signature"
+          grep -q '^TeamIdentifier=not set$' <<< "$signature"
+          codesign --verify --deep --strict "$app"
+          printf 'dmg_path=%s\n' "$dmg_file" >> "$GITHUB_OUTPUT"
+
+      - name: Name the release asset and calculate its SHA-256
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        id: macos-asset
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          DMG_PATH: ${{ steps.verified-bundle.outputs.dmg_path }}
+        run: |
+          test -f "$DMG_PATH"
+          asset="GeldApp-${RELEASE_VERSION}-macos-universal.dmg"
+          cp "$DMG_PATH" "$asset"
+          digest="$(shasum -a 256 "$asset" | awk '{print $1}')"
+          printf '%s  %s\n' "$digest" "$asset" > "$asset.sha256"
+          printf 'asset=%s\n' "$asset" >> "$GITHUB_OUTPUT"
+          printf 'checksum=%s\n' "$asset.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Require the matching draft before attaching release assets
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          gh release view "v${RELEASE_VERSION}" --json isDraft,targetCommitish \
+            | jq -e --arg sha "$EXPECTED_SHA" '.isDraft == true and .targetCommitish == $sha' >/dev/null
+
+      - name: Attach the DMG and checksum to the draft release
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_ASSET: ${{ steps.macos-asset.outputs.asset }}
+          RELEASE_CHECKSUM: ${{ steps.macos-asset.outputs.checksum }}
+        run: gh release upload "v${RELEASE_VERSION}" "$RELEASE_ASSET" "$RELEASE_CHECKSUM" --clobber
+
       - name: Recheck main head before publication
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         id: main-head-before-publish
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
@@ -234,11 +362,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Require exact main SHA before publication
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-publish.outputs.data).object.sha != github.sha }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && fromJSON(steps.main-head-before-publish.outputs.data).object.sha != github.sha }}
         run: exit 1
 
       - name: Require active immutable release tag ruleset
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         run: |
           response="$(curl --fail --silent --show-error --max-time 10 \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/rulesets/27325536?includes_parents=false")"
@@ -254,7 +382,7 @@ jobs:
           ' <<< "$response" >/dev/null
 
       - name: Create release tag at the checked SHA
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-publish.outputs.data).object.sha == github.sha }}
+        if: ${{ github.event_name != 'push' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-publish.outputs.data).object.sha == github.sha }}
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
           route: POST /repos/{owner}/{repo}/git/refs
@@ -266,7 +394,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Require release tag to point to the checked SHA
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
         id: created-tag
         uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         with:
@@ -278,11 +406,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Reject a release tag on another commit
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.created-tag.outputs.data).object.sha != github.sha }}
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && fromJSON(steps.created-tag.outputs.data).object.sha != github.sha }}
         run: exit 1
 
-      - name: Publish weekly draft release
-        if: ${{ github.event_name == 'schedule' && steps.version.outputs.is_tagged != 'true' && fromJSON(steps.main-head-before-publish.outputs.data).object.sha == github.sha && fromJSON(steps.created-tag.outputs.data).object.sha == github.sha }}
+      - name: Publish guarded draft release
+        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) && fromJSON(steps.main-head-before-publish.outputs.data).object.sha == github.sha && fromJSON(steps.created-tag.outputs.data).object.sha == github.sha }}
+        id: published-release
         uses: release-drafter/release-drafter@d1a19e60e81a7e650d00a7de9277f87e439117ea # v7.11.0
         with:
           version: ${{ steps.version.outputs.version }}
@@ -290,3 +419,28 @@ jobs:
           publish: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read the published release record
+        if: ${{ steps.published-release.outcome == 'success' }}
+        id: published-record
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
+        with:
+          route: GET /repos/{owner}/{repo}/releases/{release_id}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          release_id: ${{ steps.published-release.outputs.id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require immutable published assets
+        if: ${{ steps.published-release.outcome == 'success' }}
+        env:
+          RELEASE_RECORD: ${{ steps.published-record.outputs.data }}
+          RELEASE_TAG: v${{ steps.version.outputs.version }}
+          RELEASE_ASSET: ${{ steps.macos-asset.outputs.asset }}
+          RELEASE_CHECKSUM: ${{ steps.macos-asset.outputs.checksum }}
+        run: |
+          jq --exit-status --arg tag "$RELEASE_TAG" --arg dmg "$RELEASE_ASSET" --arg checksum "$RELEASE_CHECKSUM" '
+            .draft == false and .immutable == true and .tag_name == $tag and
+            ([.assets[].name] | index($dmg) != null and index($checksum) != null)
+          ' <<< "$RELEASE_RECORD" >/dev/null
