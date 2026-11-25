@@ -20,4 +20,4 @@
 
 - The current aggregate retains the reviewed TypeScript 7/Vite 8/plugin-react 6 toolchain and AES-GCM 0.11 nonce conversion plus the legacy 0.10 vault fixture.
 - The intermediate rand 0.10 helper was superseded after hosted CodeQL alerts. Current source uses direct fallible `getrandom` 0.4.3 calls and retains the entropy-failure recovery regression; Terra approved the source fix at `ea3d5f8c010411d1007d3b0929e5d67b972460b1` after independently passing format, strict Clippy, and 13 locked native tests.
-- Final aggregate exact-SHA review and hosted CodeQL results are pending. No alerts were dismissed, and no platform-runtime or biometric validation is claimed from compilation.
+- Aggregate SHA `46554675ba38f54d89ac8492583d0c8a07a7181c` passed hosted checks, including CodeQL. The later macOS 13.3/Safari 16.4 and Windows WebView2 Chromium 111 floor follow-up still requires exact-SHA review and hosted checks. No alerts were dismissed, and no platform-runtime or biometric validation is claimed from compilation.

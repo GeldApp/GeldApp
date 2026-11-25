@@ -1,5 +1,13 @@
 # Verification — 2026-11-15
 
+## Desktop runtime floor and bundle targets — 2026-11-25
+
+- Declared macOS minimum: 13.3, aligned across Tauri bundle metadata and the Objective-C bridge deployment target. Vite production JavaScript and CSS targets Safari 16.4 and Chromium 111 (Edge 111).
+- Safari 16.4 is available on macOS Ventura 13.3; see [Apple's release notes](https://developer.apple.com/documentation/safari-release-notes/safari-16_4-release-notes) and [Tauri's WebView version mapping](https://v2.tauri.app/reference/webview-versions/). The app deliberately declares Ventura 13.3 as its OS minimum. The oldest supported physical OS/device has not been tested.
+- The Windows requirement is an Evergreen WebView2 runtime at Chromium 111 or newer. Tauri's default installer bootstraps a missing runtime; a pinned/offline runtime may not update. Windows runtime behavior has not been tested.
+- Source API/CSS inventory: `String.replaceAll`, `Array.prototype.at`, Web Crypto, `TextEncoder`/`TextDecoder`, `:focus-visible`, `backdrop-filter`, and `100dvh`; no source use found of `:has()`, container queries, subgrid, `color-mix()`, or newer Lab/Oklch color functions. Vite targets syntax and CSS minification only; it does not supply API polyfills. This inventory and successful builds do not establish runtime behavior on the declared minimum device.
+- The aggregate at `46554675ba38f54d89ac8492583d0c8a07a7181c` passed its hosted required checks, including CodeQL. This later platform-floor follow-up needs its own exact-SHA review and hosted scan.
+
 ## Encrypted vault branch verification
 
 - Rust vault tests: 12 passing after provider isolation. Cover setup/read/lock, wrong passphrase, ciphertext tampering, invalid ledger schema, explicit migration with retained plaintext snapshots, explicit recovery with damaged-current preservation, biometric cleanup failure with retryable removal, previous-snapshot rotation failure, failed current replacement, recovery cleanup-failure state, exclusive process ownership, and fresh OS-generated keys/salts/nonces.

@@ -15,6 +15,14 @@ npm run tauri build
 
 Tauri prerequisites: <https://v2.tauri.app/start/prerequisites/>. Build macOS installers on macOS; build Windows installers on Windows. Desktop signing and release distribution are not configured.
 
+## Desktop runtime requirements
+
+- macOS 13.3 or newer. The app declares this minimum in Tauri and builds its Objective-C Keychain bridge for the same deployment floor. Safari 16.4 is the web-platform baseline used for production JavaScript and CSS output. This minimum physical OS has not yet been tested.
+- Windows requires Microsoft Edge WebView2 Evergreen with Chromium 111 or newer. Tauri's default installer can bootstrap a missing runtime; a network connection is needed for that download. Admin-pinned or offline runtimes can remain older than the required baseline. No Windows runtime validation is claimed.
+- Vite targets Safari 16.4 and Chromium 111 for both JavaScript syntax and CSS. This does not polyfill browser APIs. The current source uses standard APIs including `String.replaceAll`, `Array.prototype.at`, Web Crypto, `TextEncoder`/`TextDecoder`, and CSS `:focus-visible`, `backdrop-filter`, and `100dvh`; runtime behavior on the oldest supported OS/device remains unverified.
+
+References: [Apple Safari 16.4 release notes](https://developer.apple.com/documentation/safari-release-notes/safari-16_4-release-notes), [Tauri WebView versions](https://v2.tauri.app/reference/webview-versions/), [Tauri Windows WebView2 setup](https://v2.tauri.app/start/prerequisites/#windows), [Vite build options](https://vite.dev/config/build-options.html).
+
 ## Working features
 
 - Overview with account balances, actual monthly income/spending, historical cash-flow chart, budgets, and recent transactions.
