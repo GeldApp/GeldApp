@@ -13,6 +13,7 @@ Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with
 - [x] Monthly category budgets, spending breakdown and cash-flow chart.
 - [x] IBAN checksum validation and payment drafts; **no payment execution**.
 - [x] Passphrase-encrypted backup/restore, separate from the active ledger.
+- [x] **DEP-01 · Implemented; aggregate review approved, checked 2026-11-25** — Current toolchain: TypeScript 7.0.2, Vite 8.3.8 and `@vitejs/plugin-react` 6.3.0; native crypto crates: `aes-gcm` 0.11 and direct `getrandom` 0.4.3 calls (the rand 0.10 PR was superseded). Vault envelope v1 remains compatible with the checked-in AES-GCM 0.10 fixture; injected entropy-failure regression verifies recovery leaves vault files intact. Final aggregate CodeQL scan is pending. Native biometric behavior remains unverified on devices.
 - [x] macOS development bundle builds and launches; limited native persistence verified.
 - [ ] Windows native build and runtime verification; code portability alone is insufficient. An isolated compiled-app smoke now covers create, save, lock, competing-process exclusion, restart, wrong-passphrase rejection, reopen, and previous-snapshot recovery in macOS and Windows CI. Local macOS runtime passed; hosted Windows execution is pending.
 

@@ -5,7 +5,6 @@ use aes_gcm::{
 use argon2::{Algorithm, Argon2, Params, Version};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use fs2::FileExt;
-use rand::{rngs::OsRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -130,7 +129,7 @@ impl VaultSession {
             return Err("An encrypted vault already exists. It was left unchanged.".into());
         }
         validate_data(data)?;
-        let key = random_key();
+        let key = random_key()?;
         let envelope = create_envelope(passphrase, &key, data.as_bytes(), false)?;
         write_vault(directory, &envelope)?;
         *self
@@ -209,6 +208,24 @@ impl VaultSession {
         passphrase: &str,
         delete_biometric_key: impl FnOnce() -> Result<(), String>,
     ) -> Result<(), String> {
+        self.recover_previous_with_cleanup_and_entropy(
+            directory,
+            passphrase,
+            delete_biometric_key,
+            |bytes| {
+                getrandom::fill(bytes)
+                    .map_err(|_| "Could not generate secure random vault material".to_string())
+            },
+        )
+    }
+
+    fn recover_previous_with_cleanup_and_entropy(
+        &self,
+        directory: &Path,
+        passphrase: &str,
+        delete_biometric_key: impl FnOnce() -> Result<(), String>,
+        fill_rejected_id: impl FnOnce(&mut [u8]) -> Result<(), String>,
+    ) -> Result<(), String> {
         let _operation = self
             .operation
             .lock()
@@ -227,12 +244,16 @@ impl VaultSession {
         validate_data(
             std::str::from_utf8(&data).map_err(|_| "Previous vault data is invalid".to_string())?,
         )?;
+        // Obtain every fallible local prerequisite before deleting the biometric key.
+        let mut rejected_id_bytes = [0; 8];
+        fill_rejected_id(&mut rejected_id_bytes)?;
+        let rejected_id = u64::from_le_bytes(rejected_id_bytes);
         let biometric_cleanup_needed = delete_biometric_key().is_err();
         // If Keychain refused removal, keep the recovery screen's opt-out visible
         // so the user can retry cleanup from Settings after unlocking by passphrase.
         envelope.biometric_enabled = biometric_cleanup_needed;
         let current = vault_path(directory);
-        let rejected = directory.join(format!("vault.rejected-{}.enc", rand::random::<u64>()));
+        let rejected = directory.join(format!("vault.rejected-{rejected_id}.enc"));
         let recovery_next = directory.join("vault.recovery.next.enc");
         write_exact_atomic_stage(
             &recovery_next,
@@ -512,8 +533,11 @@ fn valid_date(value: &str) -> bool {
     day >= 1 && day <= days
 }
 
-fn random_key() -> Zeroizing<[u8; 32]> {
-    Zeroizing::new(OsRng.gen())
+fn random_key() -> Result<Zeroizing<[u8; 32]>, String> {
+    let mut key = Zeroizing::new([0; 32]);
+    getrandom::fill(key.as_mut())
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
+    Ok(key)
 }
 
 fn derive_key(passphrase: &str, salt: &[u8]) -> Result<Zeroizing<[u8; 32]>, String> {
@@ -531,9 +555,10 @@ fn derive_key(passphrase: &str, salt: &[u8]) -> Result<Zeroizing<[u8; 32]>, Stri
 }
 
 fn encrypt(key: &[u8; 32], nonce: &[u8; 12], data: &[u8], aad: &[u8]) -> Result<Vec<u8>, String> {
+    let nonce = Nonce::from(*nonce);
     Aes256Gcm::new_from_slice(key)
         .map_err(|_| "Invalid encryption key".to_string())?
-        .encrypt(Nonce::from_slice(nonce), Payload { msg: data, aad })
+        .encrypt(&nonce, Payload { msg: data, aad })
         .map_err(|_| "Could not encrypt vault data".to_string())
 }
 
@@ -543,9 +568,10 @@ fn decrypt(
     data: &[u8],
     aad: &[u8],
 ) -> Result<Zeroizing<Vec<u8>>, String> {
+    let nonce = Nonce::from(*nonce);
     let plaintext = Aes256Gcm::new_from_slice(key)
         .map_err(|_| "Invalid encryption key".to_string())?
-        .decrypt(Nonce::from_slice(nonce), Payload { msg: data, aad })
+        .decrypt(&nonce, Payload { msg: data, aad })
         .map_err(|_| "Encrypted data authentication failed".to_string())?;
     Ok(Zeroizing::new(plaintext))
 }
@@ -556,8 +582,12 @@ fn create_envelope(
     data: &[u8],
     biometric_enabled: bool,
 ) -> Result<VaultFile, String> {
-    let salt: [u8; 16] = OsRng.gen();
-    let key_nonce: [u8; 12] = OsRng.gen();
+    let mut salt = [0; 16];
+    getrandom::fill(&mut salt)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
+    let mut key_nonce = [0; 12];
+    getrandom::fill(&mut key_nonce)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let wrapping_key = derive_key(passphrase, &salt)?;
     let wrapped_key = encrypt(&wrapping_key, &key_nonce, key, KEY_AAD)?;
     let mut envelope = VaultFile {
@@ -596,7 +626,9 @@ fn unwrap_key(passphrase: &str, envelope: &VaultFile) -> Result<Zeroizing<[u8; 3
 }
 
 fn encrypt_data(key: &[u8; 32], data: &[u8], envelope: &mut VaultFile) -> Result<(), String> {
-    let nonce: [u8; 12] = OsRng.gen();
+    let mut nonce = [0; 12];
+    getrandom::fill(&mut nonce)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let ciphertext = encrypt(key, &nonce, data, DATA_AAD)?;
     envelope.data_nonce = B64.encode(nonce);
     envelope.ciphertext = B64.encode(ciphertext);
@@ -868,8 +900,8 @@ mod tests {
 
     #[test]
     fn os_rng_material_is_fresh_across_keys_salts_and_aead_nonces() {
-        let first_key = random_key();
-        let second_key = random_key();
+        let first_key = random_key().unwrap();
+        let second_key = random_key().unwrap();
         assert_ne!(&*first_key, &*second_key);
 
         let mut first = create_envelope(PASS, &first_key, LEDGER.as_bytes(), false).unwrap();
@@ -900,6 +932,27 @@ mod tests {
             .contains("locked"));
         session.unlock(directory.path(), PASS).unwrap();
         assert_eq!(session.load(directory.path()).unwrap().unwrap(), LEDGER);
+    }
+
+    #[test]
+    fn aes_gcm_010_vault_fixture_unlocks_with_authenticated_ledger() {
+        // Independently generated with aes-gcm 0.10.3; see tests/fixtures/README.md.
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(
+            vault_path(directory.path()),
+            include_str!("../tests/fixtures/vault-v1-aes-gcm-0.10.json"),
+        )
+        .unwrap();
+        let session = VaultSession::new();
+
+        session
+            .unlock(directory.path(), "legacy aes-gcm fixture passphrase")
+            .unwrap();
+
+        assert_eq!(
+            session.load(directory.path()).unwrap().as_deref(),
+            Some(LEDGER)
+        );
     }
 
     #[test]
@@ -1030,6 +1083,62 @@ mod tests {
             .unwrap();
 
         assert!(session.status(directory.path()).unwrap().biometric_enabled);
+    }
+
+    #[test]
+    fn recovery_entropy_failure_preserves_vault_files_and_skips_biometric_cleanup() {
+        let directory = tempfile::tempdir().unwrap();
+        let session = VaultSession::new();
+        session.setup(directory.path(), PASS, LEDGER).unwrap();
+        let mut envelope: VaultFile =
+            serde_json::from_slice(&fs::read(vault_path(directory.path())).unwrap()).unwrap();
+        envelope.biometric_enabled = true;
+        fs::write(
+            vault_path(directory.path()),
+            serde_json::to_vec(&envelope).unwrap(),
+        )
+        .unwrap();
+        session.save(directory.path(), LEDGER).unwrap();
+        session.lock().unwrap();
+        fs::write(vault_path(directory.path()), b"damaged current vault").unwrap();
+        let before: std::collections::BTreeMap<_, _> = fs::read_dir(directory.path())
+            .unwrap()
+            .map(|entry| {
+                let path = entry.unwrap().path();
+                (
+                    path.file_name().unwrap().to_owned(),
+                    fs::read(path).unwrap(),
+                )
+            })
+            .collect();
+
+        let mut cleanup_called = false;
+        let error = session
+            .recover_previous_with_cleanup_and_entropy(
+                directory.path(),
+                PASS,
+                || {
+                    cleanup_called = true;
+                    Ok(())
+                },
+                |_| Err("injected entropy failure".into()),
+            )
+            .unwrap_err();
+
+        assert!(error.contains("injected entropy failure"));
+        assert!(!cleanup_called);
+        let after: std::collections::BTreeMap<_, _> = fs::read_dir(directory.path())
+            .unwrap()
+            .map(|entry| {
+                let path = entry.unwrap().path();
+                (
+                    path.file_name().unwrap().to_owned(),
+                    fs::read(path).unwrap(),
+                )
+            })
+            .collect();
+        assert_eq!(after, before);
+        assert!(!session.status(directory.path()).unwrap().unlocked);
     }
 
     #[test]
