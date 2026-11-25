@@ -41,7 +41,7 @@
     "shortDescription": "Personal finance, with clarity",
     "category": "Finance",
     "macOS": {
-      "minimumSystemVersion": "10.15",
+      "minimumSystemVersion": "13.3",
       "signingIdentity": "-"
     }
   }
