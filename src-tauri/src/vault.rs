@@ -5,7 +5,7 @@ use aes_gcm::{
 use argon2::{Algorithm, Argon2, Params, Version};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use fs2::FileExt;
-use rand::{rngs::OsRng, Rng};
+use rand::{rngs::SysRng, TryRng};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -121,7 +121,7 @@ impl VaultSession {
             return Err("An encrypted vault already exists. It was left unchanged.".into());
         }
         validate_data(data)?;
-        let key = random_key();
+        let key = random_key()?;
         let envelope = create_envelope(passphrase, &key, data.as_bytes(), false)?;
         write_vault(directory, &envelope)?;
         *self
@@ -223,7 +223,10 @@ impl VaultSession {
         // so the user can retry cleanup from Settings after unlocking by passphrase.
         envelope.biometric_enabled = biometric_cleanup_needed;
         let current = vault_path(directory);
-        let rejected = directory.join(format!("vault.rejected-{}.enc", rand::random::<u64>()));
+        let mut rejected_id_bytes = [0; 8];
+        fill_random(&mut rejected_id_bytes)?;
+        let rejected_id = u64::from_le_bytes(rejected_id_bytes);
+        let rejected = directory.join(format!("vault.rejected-{rejected_id}.enc"));
         let recovery_next = directory.join("vault.recovery.next.enc");
         write_exact_atomic_stage(
             &recovery_next,
@@ -503,8 +506,17 @@ fn valid_date(value: &str) -> bool {
     day >= 1 && day <= days
 }
 
-fn random_key() -> Zeroizing<[u8; 32]> {
-    Zeroizing::new(OsRng.gen())
+fn fill_random(bytes: &mut [u8]) -> Result<(), String> {
+    SysRng
+        .try_fill_bytes(bytes)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
+    Ok(())
+}
+
+fn random_key() -> Result<Zeroizing<[u8; 32]>, String> {
+    let mut key = Zeroizing::new([0; 32]);
+    fill_random(key.as_mut())?;
+    Ok(key)
 }
 
 fn derive_key(passphrase: &str, salt: &[u8]) -> Result<Zeroizing<[u8; 32]>, String> {
@@ -547,8 +559,10 @@ fn create_envelope(
     data: &[u8],
     biometric_enabled: bool,
 ) -> Result<VaultFile, String> {
-    let salt: [u8; 16] = OsRng.gen();
-    let key_nonce: [u8; 12] = OsRng.gen();
+    let mut salt = [0; 16];
+    fill_random(&mut salt)?;
+    let mut key_nonce = [0; 12];
+    fill_random(&mut key_nonce)?;
     let wrapping_key = derive_key(passphrase, &salt)?;
     let wrapped_key = encrypt(&wrapping_key, &key_nonce, key, KEY_AAD)?;
     let mut envelope = VaultFile {
@@ -587,7 +601,8 @@ fn unwrap_key(passphrase: &str, envelope: &VaultFile) -> Result<Zeroizing<[u8; 3
 }
 
 fn encrypt_data(key: &[u8; 32], data: &[u8], envelope: &mut VaultFile) -> Result<(), String> {
-    let nonce: [u8; 12] = OsRng.gen();
+    let mut nonce = [0; 12];
+    fill_random(&mut nonce)?;
     let ciphertext = encrypt(key, &nonce, data, DATA_AAD)?;
     envelope.data_nonce = B64.encode(nonce);
     envelope.ciphertext = B64.encode(ciphertext);
@@ -824,8 +839,8 @@ mod tests {
 
     #[test]
     fn os_rng_material_is_fresh_across_keys_salts_and_aead_nonces() {
-        let first_key = random_key();
-        let second_key = random_key();
+        let first_key = random_key().unwrap();
+        let second_key = random_key().unwrap();
         assert_ne!(&*first_key, &*second_key);
 
         let mut first = create_envelope(PASS, &first_key, LEDGER.as_bytes(), false).unwrap();
