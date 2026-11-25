@@ -1,6 +1,6 @@
 # GeldApp product backlog
 
-Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with GeldApp's own professional identity, then encrypted cross-device sync. This is a delivery plan, not a claim that bank connectivity or security has shipped.
+Baseline checked: **2026-11-25**. Goal: practical MoneyMoney feature parity with GeldApp's own professional identity, then encrypted cross-device sync. This is a delivery plan, not a claim that bank connectivity or security has shipped.
 
 `[x]` implemented prototype behavior; `[ ]` incomplete. **Partial** means a usable subset exists. **In progress** is not merged or approved. P0 blocks real-data use; P1 makes a useful everyday banking app; P2 closes broader parity; P3 extends GeldApp. Every delivery needs a Luna implementation worktree, relevant checks, an independent Terra review of the final SHA, and primary-agent integration.
 
@@ -13,6 +13,7 @@ Baseline checked: **2026-11-15**. Goal: practical MoneyMoney feature parity with
 - [x] Monthly category budgets, spending breakdown and cash-flow chart.
 - [x] IBAN checksum validation and payment drafts; **no payment execution**.
 - [x] Passphrase-encrypted backup/restore, separate from the active ledger.
+- [x] **DEP-01 · Implemented; component reviews approved** — Current toolchain: TypeScript 7.0.2, Vite 8.3.8 and `@vitejs/plugin-react` 6.3.0; native crypto crates: `aes-gcm` 0.11 and direct `getrandom` 0.4.3 calls (the rand 0.10 PR was superseded). Vault envelope v1 remains compatible with the checked-in AES-GCM 0.10 fixture; injected entropy-failure regression verifies recovery leaves vault files intact. Final aggregate CodeQL scan is pending. Native biometric behavior remains unverified on devices.
 - [x] macOS development bundle builds and launches; limited native persistence verified.
 - [ ] Windows native build and runtime verification; code portability alone is insufficient.
 
