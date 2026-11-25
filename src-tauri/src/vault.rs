@@ -522,9 +522,10 @@ fn derive_key(passphrase: &str, salt: &[u8]) -> Result<Zeroizing<[u8; 32]>, Stri
 }
 
 fn encrypt(key: &[u8; 32], nonce: &[u8; 12], data: &[u8], aad: &[u8]) -> Result<Vec<u8>, String> {
+    let nonce = Nonce::from(*nonce);
     Aes256Gcm::new_from_slice(key)
         .map_err(|_| "Invalid encryption key".to_string())?
-        .encrypt(Nonce::from_slice(nonce), Payload { msg: data, aad })
+        .encrypt(&nonce, Payload { msg: data, aad })
         .map_err(|_| "Could not encrypt vault data".to_string())
 }
 
@@ -534,9 +535,10 @@ fn decrypt(
     data: &[u8],
     aad: &[u8],
 ) -> Result<Zeroizing<Vec<u8>>, String> {
+    let nonce = Nonce::from(*nonce);
     let plaintext = Aes256Gcm::new_from_slice(key)
         .map_err(|_| "Invalid encryption key".to_string())?
-        .decrypt(Nonce::from_slice(nonce), Payload { msg: data, aad })
+        .decrypt(&nonce, Payload { msg: data, aad })
         .map_err(|_| "Encrypted data authentication failed".to_string())?;
     Ok(Zeroizing::new(plaintext))
 }
