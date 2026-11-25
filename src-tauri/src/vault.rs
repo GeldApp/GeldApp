@@ -576,9 +576,13 @@ fn create_envelope(
     biometric_enabled: bool,
 ) -> Result<VaultFile, String> {
     let mut salt = [0; 16];
-    fill_random(&mut salt)?;
+    SysRng
+        .try_fill_bytes(&mut salt)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let mut key_nonce = [0; 12];
-    fill_random(&mut key_nonce)?;
+    SysRng
+        .try_fill_bytes(&mut key_nonce)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let wrapping_key = derive_key(passphrase, &salt)?;
     let wrapped_key = encrypt(&wrapping_key, &key_nonce, key, KEY_AAD)?;
     let mut envelope = VaultFile {
@@ -618,7 +622,9 @@ fn unwrap_key(passphrase: &str, envelope: &VaultFile) -> Result<Zeroizing<[u8; 3
 
 fn encrypt_data(key: &[u8; 32], data: &[u8], envelope: &mut VaultFile) -> Result<(), String> {
     let mut nonce = [0; 12];
-    fill_random(&mut nonce)?;
+    SysRng
+        .try_fill_bytes(&mut nonce)
+        .map_err(|_| "Could not generate secure random vault material".to_string())?;
     let ciphertext = encrypt(key, &nonce, data, DATA_AAD)?;
     envelope.data_nonce = B64.encode(nonce);
     envelope.ciphertext = B64.encode(ciphertext);
