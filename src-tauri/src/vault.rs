@@ -861,6 +861,27 @@ mod tests {
     }
 
     #[test]
+    fn aes_gcm_010_vault_fixture_unlocks_with_authenticated_ledger() {
+        // Independently generated with aes-gcm 0.10.3; see tests/fixtures/README.md.
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(
+            vault_path(directory.path()),
+            include_str!("../tests/fixtures/vault-v1-aes-gcm-0.10.json"),
+        )
+        .unwrap();
+        let session = VaultSession::new();
+
+        session
+            .unlock(directory.path(), "legacy aes-gcm fixture passphrase")
+            .unwrap();
+
+        assert_eq!(
+            session.load(directory.path()).unwrap().as_deref(),
+            Some(LEDGER)
+        );
+    }
+
+    #[test]
     fn wrong_passphrase_and_tampering_fail_closed() {
         let directory = tempfile::tempdir().unwrap();
         let session = VaultSession::new();

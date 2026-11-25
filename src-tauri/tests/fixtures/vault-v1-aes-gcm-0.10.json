@@ -1,0 +1,14 @@
+{
+  "format": "geldapp-vault",
+  "version": 1,
+  "kdf": "argon2id",
+  "memory_kib": 65536,
+  "iterations": 3,
+  "parallelism": 1,
+  "salt": "IiIiIiIiIiIiIiIiIiIiIg==",
+  "key_nonce": "MzMzMzMzMzMzMzMz",
+  "wrapped_key": "FyiRylK3HcAVjMWqhaco504MlCFrMxC3PJt6mLVtubKOf65XNFvOx01jp1xlbm1t",
+  "data_nonce": "RERERERERERERERE",
+  "ciphertext": "t2c+CzhLTViHsqWsBMgWj/uluVXMfh3tjA7NQUi5S7JpAqkcPHavWJHOg7PBAm5Thr6I+PCWwL2tAQUXcJ2nA4IT015smdIFq59vvo2DmmJxeRQ3JgA=",
+  "biometric_enabled": false
+}
