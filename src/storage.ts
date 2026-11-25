@@ -37,7 +37,9 @@ function base64(bytes:Uint8Array) { return btoa(Array.from(bytes,c=>String.fromC
 function unbase64(value:string) { return Uint8Array.from(atob(value),c=>c.charCodeAt(0)); }
 async function derive(password:string,salt:Uint8Array, usages:KeyUsage[]) {
   const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
-  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,usages);
+  const saltBuffer: ArrayBuffer = new ArrayBuffer(salt.byteLength);
+  new Uint8Array(saltBuffer).set(salt);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt:saltBuffer,iterations:600000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,usages);
 }
 export async function encryptBackup(ledger:Ledger,password:string) {
   if(password.length<12) throw new Error('Use a passphrase with at least 12 characters.');
