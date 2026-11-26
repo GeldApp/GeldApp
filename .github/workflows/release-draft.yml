@@ -375,9 +375,12 @@ jobs:
 
       - name: Require active immutable release tag ruleset
         if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          response="$(curl --fail --silent --show-error --max-time 10 \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/rulesets/27325536?includes_parents=false")"
+          response="$(gh api --method GET \
+            "repos/${GITHUB_REPOSITORY}/rulesets/27325536" \
+            --field includes_parents=false)"
           jq --exit-status '
             .id == 27325536 and
             .name == "Protect release tags" and
