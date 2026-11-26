@@ -24,7 +24,80 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  wait-for-required-checks:
+    name: Wait for required checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    permissions:
+      checks: read
+    steps:
+      - name: Wait for Frontend check on this main commit
+        if: ${{ github.event_name != 'push' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Frontend
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for Native (macOS) check on this main commit
+        if: ${{ github.event_name != 'push' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Native (macOS)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for Native (Windows) check on this main commit
+        if: ${{ github.event_name != 'push' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Native (Windows)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for CodeQL JavaScript/TypeScript analysis on this main commit
+        if: ${{ github.event_name != 'push' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Analyze (javascript-typescript)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
+      - name: Wait for CodeQL Rust analysis on this main commit
+        if: ${{ github.event_name != 'push' }}
+        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: Analyze (rust)
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allowed-conclusions: success
+          checks-discovery-timeout: 600
+          fail-on-no-checks: true
+          wait-interval: 30
+          wait-for-duplicates: true
+
   update:
+    needs: wait-for-required-checks
     name: Update draft release
     runs-on: ${{ github.event_name == 'push' && 'ubuntu-latest' || 'macos-latest' }}
     timeout-minutes: 30
@@ -88,71 +161,6 @@ jobs:
       - name: Require manual releases to use main
         if: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
         run: exit 1
-
-      - name: Wait for Frontend check on this main commit
-        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        with:
-          ref: ${{ github.sha }}
-          check-name: Frontend
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-conclusions: success
-          checks-discovery-timeout: 600
-          fail-on-no-checks: true
-          wait-interval: 30
-          wait-for-duplicates: true
-
-      - name: Wait for Native (macOS) check on this main commit
-        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        with:
-          ref: ${{ github.sha }}
-          check-name: Native (macOS)
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-conclusions: success
-          checks-discovery-timeout: 600
-          fail-on-no-checks: true
-          wait-interval: 30
-          wait-for-duplicates: true
-
-      - name: Wait for Native (Windows) check on this main commit
-        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        with:
-          ref: ${{ github.sha }}
-          check-name: Native (Windows)
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-conclusions: success
-          checks-discovery-timeout: 600
-          fail-on-no-checks: true
-          wait-interval: 30
-          wait-for-duplicates: true
-
-      - name: Wait for CodeQL JavaScript/TypeScript analysis on this main commit
-        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        with:
-          ref: ${{ github.sha }}
-          check-name: Analyze (javascript-typescript)
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-conclusions: success
-          checks-discovery-timeout: 600
-          fail-on-no-checks: true
-          wait-interval: 30
-          wait-for-duplicates: true
-
-      - name: Wait for CodeQL Rust analysis on this main commit
-        if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        with:
-          ref: ${{ github.sha }}
-          check-name: Analyze (rust)
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allowed-conclusions: success
-          checks-discovery-timeout: 600
-          fail-on-no-checks: true
-          wait-interval: 30
-          wait-for-duplicates: true
 
       - name: Fetch CodeQL analyses for main
         if: ${{ github.event_name != 'push' && (steps.version.outputs.is_tagged != 'true' || (github.event_name == 'workflow_dispatch' && inputs.resume_draft)) }}
