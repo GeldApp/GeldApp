@@ -27,7 +27,7 @@ brew upgrade --cask geldapp
 brew uninstall --cask geldapp
 ```
 
-Uninstall removes the app and leaves the local financial vault in place. The DMG and its SHA-256 checksum are attached to each versioned [GitHub release](https://github.com/GeldApp/GeldApp/releases). Because the preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature, macOS Gatekeeper may show a warning on first launch; Homebrew does not remove quarantine. If macOS blocks the app, use Finder's Control-click > Open flow and review the prompt. See [release and recovery details](docs/releases.md).
+Uninstall removes the app and leaves the local financial vault in place. The DMG and its SHA-256 checksum are attached to each versioned [GitHub release](https://github.com/GeldApp/GeldApp/releases). Because the preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature, macOS Gatekeeper may show a warning on first launch; Homebrew does not remove quarantine. If Gatekeeper blocks it, verify the download and checksum first. If you choose to proceed, try opening the app, then go to System Settings > Privacy & Security > Open Anyway and review the confirmation prompt. See [Apple's current instructions](https://support.apple.com/en-us/102445) and [release and recovery details](docs/releases.md).
 
 ## Desktop runtime requirements
 

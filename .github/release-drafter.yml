@@ -11,7 +11,7 @@ template: |
 
   After this release is published and its cask update has merged, install or upgrade with `brew install --cask geldapp/tap/geldapp` or `brew upgrade --cask geldapp`. The universal DMG supports Apple Silicon and Intel; this release includes its SHA-256 checksum.
 
-  The preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature. macOS Gatekeeper may require you to Control-click the app in Finder, choose Open, and review its prompt. Homebrew does not bypass quarantine. Use sample data only; Keychain, physical Touch ID, and Windows runtime behavior remain unverified.
+  Requires macOS 13.3 or later. The preview is ad-hoc signed and unnotarized, with no Apple Developer ID signature. Homebrew does not remove quarantine. If Gatekeeper blocks the app, first verify it came from this release and check its published SHA-256 checksum. If you choose to proceed, try opening it, then use System Settings > Privacy & Security > Open Anyway and review Apple's confirmation prompt. See [Apple's current instructions](https://support.apple.com/en-us/102445). Use sample data only; Keychain, physical Touch ID, and Windows runtime behavior remain unverified.
 
 change-template: '- $TITLE (#$NUMBER)'
 change-title-escapes: '\<*_&'
