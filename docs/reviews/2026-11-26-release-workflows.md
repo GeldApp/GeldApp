@@ -7,3 +7,5 @@ Release run 45876343316 failed because the wait action's Ruby lockfile omitted t
 The Pages upload and deployment now agree on an artifact name unique to the run attempt. Attempt 2 of run 45707699964 confirmed the duplicate-name failure. A fresh main dispatch deployed the install instructions successfully.
 
 Validation passed for both files with actionlint and git diff checks. The combined head requires final Terra approval and protected hosted checks before squash merge. The first release build and real cask installation remain to be verified.
+
+Terra also approved release guidance source `719b33fc831cafb7aa8f2b752950df961c6228cf`, integrated as `da7b2f83f58caf6637581648ac8c6ff495b8fba1`. The release template, README and static notes state macOS 13.3 and link to Apple's current first-launch instructions. The guide retains preview and checksum limits. The workflow source is unchanged from the earlier approved combination.
