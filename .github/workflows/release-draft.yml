@@ -314,8 +314,8 @@ jobs:
           test "$actual_version" = "$RELEASE_VERSION"
           icon="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$info")"
           test -s "$app/Contents/Resources/$icon"
-          lipo -verify_arch arm64 "$binary"
-          lipo -verify_arch x86_64 "$binary"
+          lipo "$binary" -verify_arch arm64
+          lipo "$binary" -verify_arch x86_64
 
           signature="$(codesign -dv --verbose=2 "$app" 2>&1)"
           grep -q '^Signature=adhoc$' <<< "$signature"
